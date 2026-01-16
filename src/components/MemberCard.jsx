@@ -8,7 +8,8 @@ const MemberCard = ({ member, index, onUpdate, currentUserId }) => {
     name: member.name || '',
     projects: member.projects || ['', '', '', '', ''],
     events: member.events || [],
-    goal: member.goal || ''
+    goal: member.goal || '',
+    favoriteYarnColor: member.favoriteYarnColor || ''
   });
 
   // Check if this is the current user's card
@@ -44,7 +45,8 @@ const MemberCard = ({ member, index, onUpdate, currentUserId }) => {
       name: member.name || '',
       projects: member.projects || ['', '', '', '', ''],
       events: member.events || [],
-      goal: member.goal || ''
+      goal: member.goal || '',
+      favoriteYarnColor: member.favoriteYarnColor || ''
     });
     setIsEditing(false);
   };
@@ -109,6 +111,18 @@ const MemberCard = ({ member, index, onUpdate, currentUserId }) => {
                 onChange={(e) => setEditedMember({ ...editedMember, events: e.target.value.split(',').map(s => s.trim()) })}
                 className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-2.5 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
                 placeholder="쉼표로 구분 (예: 워크샵, 전시회)"
+              />
+            </div>
+
+            {/* 좋아하는 실 색 편집 */}
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-gray-600 mb-3">올해 가장 떠보고 싶은 실 색은? 🎨</h4>
+              <input
+                type="text"
+                value={editedMember.favoriteYarnColor}
+                onChange={(e) => setEditedMember({ ...editedMember, favoriteYarnColor: e.target.value })}
+                className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-2.5 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
+                placeholder="예: 파스텔 핑크, 진한 네이비, 머스타드 옐로우"
               />
             </div>
 
@@ -224,6 +238,14 @@ const MemberCard = ({ member, index, onUpdate, currentUserId }) => {
           ))}
         </div>
       </div>
+
+      {/* 좋아하는 실 색 */}
+      {member.favoriteYarnColor && (
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">가장 떠보고 싶은 실 색 🎨</h4>
+          <p className="text-sm text-gray-700">{member.favoriteYarnColor}</p>
+        </div>
+      )}
 
       {/* 올해의 목표 */}
       <div>
