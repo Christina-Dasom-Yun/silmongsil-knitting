@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-warm-cream text-gray-800;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  }
+
+  /* 강조 텍스트용 Gowun Batang */
+  .font-gowun {
+    font-family: 'Gowun Batang', serif;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .polaroid-shadow {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+}
