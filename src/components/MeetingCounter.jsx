@@ -68,8 +68,8 @@ const MeetingCounter = () => {
       className="bg-gradient-to-br from-indie-pink/20 to-light-beige p-8 rounded-3xl card-shadow"
     >
       <div className="text-center mb-6">
-        <h3 className="text-2xl font-bold text-gray-800 mb-2 font-gowun">모임 횟수</h3>
-        <p className="text-sm text-gray-600">우리의 만남을 기록해요</p>
+        <h3 className="text-2xl font-bold text-gray-800 mb-2 font-gowun">우리언제만나요</h3>
+        <p className="text-sm text-gray-600">제발만나요</p>
       </div>
 
       {/* 한 달에 N번 선택 */}

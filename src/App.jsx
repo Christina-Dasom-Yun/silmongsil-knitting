@@ -44,9 +44,6 @@ function App() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
               우리의 2026 뜨개 계획 🎨
             </h2>
-            <p className="text-gray-600">
-              {membersLoading ? '로딩 중...' : `${members.length}명의 멤버가 함께하는 뜨개 여정`}
-            </p>
           </div>
 
           {/* Canvas-style grid with slight randomization */}
@@ -106,7 +103,7 @@ function App() {
       {/* Footer */}
       <footer className="bg-light-beige py-8 text-center">
         <p className="text-gray-600 text-sm">
-          실몽실 뜨개모임 2026 - 함께 만드는 따뜻한 이야기
+          실몽실 뜨개모임 © 2026 All rights reserved.
         </p>
         <p className="text-xs text-gray-400 mt-2">
           {!hasGoogleMapsKey && '* Google Maps API 키를 설정하면 실제 지도를 사용할 수 있습니다'}

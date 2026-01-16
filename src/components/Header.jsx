@@ -46,7 +46,7 @@ const Header = () => {
                 {groupName}
               </h1>
             )}
-            <p className="text-sm text-gray-600 mt-2">2026년 우리의 뜨개 여정</p>
+            <p className="text-sm text-gray-600 mt-2">뜨친자들 안녕?</p>
           </div>
 
           {/* Current User Info */}
@@ -55,7 +55,7 @@ const Header = () => {
               <div className="flex items-center gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">현재 사용자</p>
-                  <p className="text-lg font-bold text-indie-pink">{currentMember.name}</p>
+                  <p className="text-lg font-bold text-indie-black">{currentMember.name}</p>
                 </div>
                 <button
                   onClick={handleChangeUser}
