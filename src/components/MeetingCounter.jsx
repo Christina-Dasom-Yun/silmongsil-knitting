@@ -6,7 +6,6 @@ import { useMembers } from '../hooks/useMembers';
 const MeetingCounter = () => {
   const [frequency, setFrequency] = useState(2);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [showStats, setShowStats] = useState(false);
   const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [meetingDate, setMeetingDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -61,92 +60,99 @@ const MeetingCounter = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      className="bg-gradient-to-br from-indie-pink/20 to-light-beige p-8 rounded-3xl card-shadow"
-    >
-      <div className="text-center mb-6">
-        <h3 className="text-2xl font-bold text-gray-800 mb-2 font-gowun">우리언제만나요</h3>
-        <p className="text-sm text-gray-600">제발만나요</p>
-      </div>
+    <>
+      {/* 2열 그리드 컨테이너 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 왼쪽 카드: 목표 설정 + 카운터 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-gradient-to-br from-indie-pink/20 to-light-beige p-8 rounded-3xl card-shadow"
+        >
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2 font-gowun">우리언제만나요</h3>
+            <p className="text-sm text-gray-600">제발만나요</p>
+          </div>
 
-      {/* 한 달에 N번 선택 */}
-      <div className="mb-8">
-        <p className="text-center text-gray-700 mb-4 font-medium">한 달에</p>
-        <div className="flex justify-center gap-3">
-          {[1, 2, 3, 4].map((num) => (
+          {/* 한 달에 N번 선택 */}
+          <div className="mb-6">
+            <p className="text-center text-gray-700 mb-4 font-medium">한 달에</p>
+            <div className="flex justify-center gap-3">
+              {[1, 2, 3, 4].map((num) => (
+                <motion.button
+                  key={num}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setFrequency(num)}
+                  className={`w-14 h-14 rounded-full font-bold text-lg transition-all ${
+                    frequency === num
+                      ? 'bg-indie-pink text-white shadow-lg'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {num}
+                </motion.button>
+              ))}
+            </div>
+            <p className="text-center text-gray-700 mt-4 font-medium">번 만나기</p>
+          </div>
+
+          {/* 카운터 */}
+          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl mb-4">
+            <div className="text-center mb-4">
+              <p className="text-gray-600 mb-2">이번 달 모임 횟수</p>
+              <motion.div
+                key={currentMonthMeetings.length}
+                initial={{ scale: 1.3, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-6xl font-bold text-indie-pink"
+              >
+                {currentMonthMeetings.length}
+              </motion.div>
+              <p className="text-gray-500 text-sm mt-2">/ 목표 {frequency}번</p>
+            </div>
+
+            {/* 모임 기록 버튼 */}
             <motion.button
-              key={num}
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setFrequency(num)}
-              className={`w-14 h-14 rounded-full font-bold text-lg transition-all ${
-                frequency === num
-                  ? 'bg-indie-pink text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+              onClick={() => setShowAttendanceModal(true)}
+              className="w-full bg-indie-pink text-white font-semibold py-3 rounded-2xl hover:bg-indie-pink/80 transition-colors"
             >
-              {num}
+              + 모임 기록하기
             </motion.button>
-          ))}
-        </div>
-        <p className="text-center text-gray-700 mt-4 font-medium">번 만나기</p>
-      </div>
+          </div>
 
-      {/* 카운터 */}
-      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl">
-        <div className="text-center mb-4">
-          <p className="text-gray-600 mb-2">이번 달 모임 횟수</p>
-          <motion.div
-            key={currentMonthMeetings.length}
-            initial={{ scale: 1.3, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-6xl font-bold text-indie-pink"
-          >
-            {currentMonthMeetings.length}
-          </motion.div>
-          <p className="text-gray-500 text-sm mt-2">/ 목표 {frequency}번</p>
-        </div>
+          {/* 진행률 바 */}
+          <div>
+            <div className="bg-gray-200 h-2 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min((currentMonthMeetings.length / frequency) * 100, 100)}%` }}
+                transition={{ duration: 0.5 }}
+                className="bg-indie-pink h-full rounded-full"
+              />
+            </div>
+          </div>
+        </motion.div>
 
-        {/* 모임 기록 버튼 */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAttendanceModal(true)}
-          className="w-full bg-indie-pink text-white font-semibold py-3 rounded-2xl hover:bg-indie-pink/80 transition-colors"
+        {/* 오른쪽 카드: 연간 참석 통계 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="bg-gradient-to-br from-soft-coral/20 to-light-beige p-8 rounded-3xl card-shadow flex flex-col"
         >
-          + 모임 기록하기
-        </motion.button>
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2 font-gowun">프로참석러</h3>
+          </div>
 
-        {/* 통계 보기 버튼 */}
-        <button
-          onClick={() => setShowStats(!showStats)}
-          className="w-full mt-3 text-sm text-gray-600 hover:text-indie-pink transition-colors font-medium"
-        >
-          {showStats ? '통계 숨기기 ▲' : '참석 통계 보기 ▼'}
-        </button>
+          <div className="flex-1 overflow-hidden">
+            <AttendanceStats meetings={meetings} members={members} />
+          </div>
+        </motion.div>
       </div>
-
-      {/* 진행률 바 */}
-      <div className="mt-6">
-        <div className="bg-gray-200 h-2 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min((currentMonthMeetings.length / frequency) * 100, 100)}%` }}
-            transition={{ duration: 0.5 }}
-            className="bg-indie-pink h-full rounded-full"
-          />
-        </div>
-      </div>
-
-      {/* 참석 통계 */}
-      <AnimatePresence>
-        {showStats && (
-          <AttendanceStats meetings={meetings} members={members} />
-        )}
-      </AnimatePresence>
 
       {/* 참석자 선택 모달 */}
       <AnimatePresence>
@@ -162,7 +168,7 @@ const MeetingCounter = () => {
           />
         )}
       </AnimatePresence>
-    </motion.div>
+    </>
   );
 };
 
@@ -283,20 +289,13 @@ const AttendanceStats = ({ meetings, members }) => {
   const maxCount = attendanceStats[0]?.count || 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      className="mt-6 bg-white/80 backdrop-blur-sm p-6 rounded-2xl"
-    >
-      <h4 className="text-lg font-bold text-gray-800 mb-4 font-gowun">연간 참석 통계</h4>
-
+    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl h-full flex flex-col">
       {attendanceStats.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">
+        <p className="text-sm text-gray-500 text-center py-8">
           아직 기록된 모임이 없습니다.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pr-2 flex-1" style={{ maxHeight: '400px' }}>
           {attendanceStats.map((stat, index) => (
             <motion.div
               key={stat.name}
@@ -328,7 +327,7 @@ const AttendanceStats = ({ meetings, members }) => {
           ))}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 

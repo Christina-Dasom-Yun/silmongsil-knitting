@@ -1,59 +1,57 @@
-import { motion } from 'framer-motion';
-import { useState, useRef } from 'react';
-import { resizeImage } from '../utils/imageUtils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
 
-const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto, currentUserId, members }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [newPhoto, setNewPhoto] = useState({ title: '', file: null });
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const fileInputRef = useRef(null);
+// 스켈레톤 카드 컴포넌트
+const SkeletonCard = ({ index }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ delay: index * 0.05 }}
+    className="bg-white p-4 rounded-3xl shadow-md"
+  >
+    <div className="aspect-square bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-2xl mb-4 animate-pulse"></div>
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded-full w-3/4 mx-auto animate-pulse"></div>
+      <div className="h-3 bg-gray-200 rounded-full w-1/2 mx-auto animate-pulse"></div>
+    </div>
+  </motion.div>
+);
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setNewPhoto({ ...newPhoto, file });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+const ArchiveGallery = ({ photos, onDeletePhoto, currentUserId }) => {
+  const [filterMode, setFilterMode] = useState(() => {
+    // localStorage에서 저장된 필터 모드 복원
+    return localStorage.getItem('silmongsil_gallery_filter') || 'all';
+  }); // 'all' or 'mine'
+  const [displayCount, setDisplayCount] = useState(12); // 처음 표시할 사진 개수
+  const [selectedPhoto, setSelectedPhoto] = useState(null); // 상세보기 모달용
+
+  // 필터 모드 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('silmongsil_gallery_filter', filterMode);
+  }, [filterMode]);
+
+  // 필터링된 사진 목록 (이미 최신순으로 정렬되어 옴)
+  const filteredPhotos = filterMode === 'mine'
+    ? photos?.filter(photo => photo.authorId === currentUserId) || []
+    : photos || [];
+
+  // 표시할 사진 목록 (페이지네이션 적용)
+  const displayedPhotos = filteredPhotos.slice(0, displayCount);
+  const hasMore = filteredPhotos.length > displayCount;
+
+  // 실제 로딩 상태 (사진 데이터가 아직 로드되지 않았을 때만)
+  const isLoading = photos === undefined || photos === null;
+
+  // 더보기 버튼 클릭 핸들러
+  const handleLoadMore = () => {
+    setDisplayCount(prev => prev + 12);
   };
 
-  const handleUploadSubmit = async () => {
-    if (newPhoto.title && newPhoto.file) {
-      setIsUploading(true);
-      try {
-        // 현재 사용자 정보 가져오기
-        const currentMember = members.find(m => m.id === currentUserId);
-        const authorName = currentMember?.name || '익명';
-
-        // 이미지 리사이징 (최대 1200x1200, 품질 85%)
-        console.log('원본 이미지 크기:', (newPhoto.file.size / 1024).toFixed(2), 'KB');
-        const resizedFile = await resizeImage(newPhoto.file, 1200, 1200, 0.85);
-        console.log('리사이징된 이미지 크기:', (resizedFile.size / 1024).toFixed(2), 'KB');
-
-        await onUploadPhoto(resizedFile, {
-          title: newPhoto.title,
-          author: authorName,
-          date: new Date().toISOString().split('T')[0].replace(/-/g, '.')
-        });
-        setNewPhoto({ title: '', file: null });
-        setPreviewUrl(null);
-        setIsUploading(false);
-      } catch (error) {
-        console.error('Upload failed:', error);
-        alert('사진 업로드에 실패했습니다. 다시 시도해주세요.');
-        setIsUploading(false);
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    setNewPhoto({ title: '', file: null });
-    setPreviewUrl(null);
-    setIsUploading(false);
-  };
+  // 필터 변경 시 displayCount 초기화
+  useEffect(() => {
+    setDisplayCount(12);
+  }, [filterMode]);
 
   return (
     <motion.div
@@ -63,156 +61,288 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto, curre
       className="w-full py-12 px-6 md:px-12 bg-gradient-to-b from-warm-cream to-light-beige"
     >
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
-            작품 아카이브 📸
+            F/O 했어요 📸
           </h2>
-          <p className="text-gray-600">우리가 함께 만든 소중한 작품들</p>
+
+
+          {/* Toggle Switch */}
+          <div className="inline-flex items-center bg-white p-1.5 rounded-full shadow-md">
+            <button
+              onClick={() => setFilterMode('all')}
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                filterMode === 'all'
+                  ? 'bg-gradient-to-r from-indie-pink to-soft-coral text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              🧶 전체 작품 구경하기
+            </button>
+            <button
+              onClick={() => setFilterMode('mine')}
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                filterMode === 'mine'
+                  ? 'bg-gradient-to-r from-indie-pink to-soft-coral text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              ✨ 내 작품만 보기
+            </button>
+          </div>
+
+          {/* Filtered Count */}
+          {filterMode === 'mine' && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-indie-pink mt-3"
+            >
+              내 작품 {filteredPhotos.length}개
+            </motion.p>
+          )}
         </div>
 
-        {/* Polaroid Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {photos.map((photo, index) => (
+        {/* Loading Skeleton */}
+        {isLoading ? (
+          <ResponsiveMasonry
+            columnsCountBreakPoints={{ 350: 2, 768: 3, 1024: 4 }}
+          >
+            <Masonry gutter="1.5rem">
+              {[...Array(8)].map((_, index) => (
+                <SkeletonCard key={index} index={index} />
+              ))}
+            </Masonry>
+          </ResponsiveMasonry>
+        ) : filteredPhotos.length === 0 && filterMode === 'all' ? (
+          /* Empty State - No photos at all */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-20"
+          >
+            <div className="text-6xl mb-4">📸</div>
+            <p className="text-gray-600 text-lg font-medium mb-6">
+              아직 업로드된 작품이 없습니다
+            </p>
+          </motion.div>
+        ) : (
+          <AnimatePresence mode="wait">
             <motion.div
-              key={photo.id}
-              initial={{ opacity: 0, y: 30, rotate: -3 }}
-              animate={{ opacity: 1, y: 0, rotate: 0 }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.1,
-                type: "spring",
-                stiffness: 100
-              }}
-              whileHover={{
-                scale: 1.05,
-                rotate: index % 2 === 0 ? 3 : -3,
-                zIndex: 10
-              }}
-              className="group"
+              key={filterMode}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
             >
-              {/* Polaroid Container */}
-              <div className="bg-white p-4 pb-16 rounded-xl polaroid-shadow transform transition-all hover:shadow-2xl relative">
-                {/* Delete Button */}
-                {onDeletePhoto && (
-                  <button
-                    onClick={() => onDeletePhoto(photo.id, photo.storagePath)}
-                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              <ResponsiveMasonry
+                columnsCountBreakPoints={{ 350: 2, 768: 3, 1024: 4 }}
+              >
+                <Masonry gutter="1.5rem">
+                  {/* Existing Photos */}
+                  {displayedPhotos.map((photo, index) => {
+                    const isOwnPhoto = photo.authorId === currentUserId;
+                    return (
+                      <motion.div
+                        key={photo.id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: index * 0.05,
+                          type: "spring",
+                          stiffness: 100
+                        }}
+                        whileHover={{
+                          scale: 1.05,
+                          zIndex: 10,
+                          transition: { duration: 0.2 }
+                        }}
+                        className="group relative cursor-pointer"
+                        onClick={() => setSelectedPhoto(photo)}
+                      >
+                        <div className={`bg-white p-4 rounded-3xl shadow-lg transition-all duration-300 hover:shadow-2xl ${
+                          isOwnPhoto ? 'ring-2 ring-indie-pink ring-offset-2' : ''
+                        }`}>
+                          {/* Delete Button - Only for own photos */}
+                          {isOwnPhoto && onDeletePhoto && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeletePhoto(photo.id, photo.storagePath);
+                              }}
+                              className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Photo */}
+                          <div className="relative overflow-hidden rounded-2xl bg-gray-100 mb-4">
+                            <img
+                              src={photo.imageUrl || photo.image}
+                              alt={photo.projectTitle || photo.title}
+                              loading="lazy"
+                              className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          </div>
+
+                          {/* Caption */}
+                          <div className="text-center px-2">
+                            <h4 className="font-semibold text-gray-800 mb-1 line-clamp-2">
+                              {photo.projectTitle || photo.title}
+                            </h4>
+                            {photo.caption && (
+                              <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                                {photo.caption}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <span className="px-3 py-1 bg-gradient-to-r from-indie-pink/10 to-soft-coral/10 text-indie-pink text-xs font-medium rounded-full">
+                                {photo.authorName || photo.author}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">{photo.date}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </Masonry>
+              </ResponsiveMasonry>
+
+              {/* 더보기 버튼 */}
+              {hasMore && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-center mt-12"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleLoadMore}
+                    className="bg-gradient-to-r from-indie-pink/20 to-soft-coral/20 hover:from-indie-pink/30 hover:to-soft-coral/30 text-indie-pink font-semibold py-4 px-8 rounded-full transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                    <span className="text-lg">🧶</span>
+                    <span>이전 작품 더 구경하기</span>
+                    <span className="text-sm opacity-70">({filteredPhotos.length - displayCount}개 남음)</span>
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {/* 모든 작품 구경 완료 메시지 */}
+              {!hasMore && filteredPhotos.length > 0 && displayCount >= filteredPhotos.length && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center mt-12 py-8"
+                >
+                  <p className="text-gray-500 text-sm">✨ 모든 작품을 다 구경했어요! ✨</p>
+                </motion.div>
+              )}
+
+              {/* Empty State */}
+              {filterMode === 'mine' && filteredPhotos.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-20"
+                >
+                  <div className="text-6xl mb-4">📸</div>
+                  <p className="text-gray-600 text-lg font-medium mb-2">
+                    아직 업로드한 작품이 없습니다
+                  </p>
+                </motion.div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </div>
+
+      {/* Photo Detail Modal */}
+      <AnimatePresence>
+        {selectedPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedPhoto(null)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedPhoto(null)}
+                className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-lg transition-all z-10"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Photo */}
+              <div className="relative w-full bg-gray-100">
+                <img
+                  src={selectedPhoto.imageUrl || selectedPhoto.image}
+                  alt={selectedPhoto.projectTitle || selectedPhoto.title}
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                />
+              </div>
+
+              {/* Details */}
+              <div className="p-8">
+                <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                  {selectedPhoto.projectTitle || selectedPhoto.title}
+                </h3>
+
+                {selectedPhoto.caption && (
+                  <p className="text-gray-600 mb-4 leading-relaxed">
+                    {selectedPhoto.caption}
+                  </p>
                 )}
 
-                {/* Photo */}
-                <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
-                  <img
-                    src={photo.imageUrl || photo.image}
-                    alt={photo.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
+                <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="px-4 py-2 bg-gradient-to-r from-indie-pink/20 to-soft-coral/20 text-indie-pink font-medium rounded-full">
+                      {selectedPhoto.authorName || selectedPhoto.author}
+                    </span>
+                  </div>
+                  <span className="text-gray-400 text-sm">
+                    {selectedPhoto.date}
+                  </span>
                 </div>
 
-                {/* Caption Area */}
-                <div className="text-center">
-                  <h4 className="font-semibold text-gray-800 mb-1">{photo.title}</h4>
-                  <p className="text-sm text-gray-500">{photo.author}</p>
-                  <p className="text-xs text-gray-400 mt-1">{photo.date}</p>
-                </div>
-
-                {/* Decorative Tape */}
-                <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-16 h-6 bg-yellow-100/50 rotate-0 rounded-sm opacity-70"></div>
+                {/* Delete Button for Own Photos */}
+                {selectedPhoto.authorId === currentUserId && onDeletePhoto && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        if (window.confirm('정말 이 사진을 삭제하시겠습니까?')) {
+                          onDeletePhoto(selectedPhoto.id, selectedPhoto.storagePath);
+                          setSelectedPhoto(null);
+                        }
+                      }}
+                      className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-2xl font-medium transition-all"
+                    >
+                      사진 삭제하기
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
-          ))}
-
-          {/* Add Photo Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.5,
-              delay: (photos?.length || 0) * 0.1,
-              type: "spring",
-              stiffness: 100
-            }}
-            whileHover={{ scale: 1.05, zIndex: 10 }}
-            className="bg-white p-4 pb-16 rounded-xl polaroid-shadow"
-          >
-            {!previewUrl ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="aspect-square bg-gradient-to-br from-indie-pink/20 to-light-beige rounded-lg flex items-center justify-center mb-4 cursor-pointer hover:bg-indie-pink/30 transition-colors"
-              >
-                <div className="text-center">
-                  <svg
-                    className="w-16 h-16 mx-auto text-gray-400 mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <p className="text-gray-500 font-medium">사진 추가</p>
-                </div>
-              </div>
-            ) : (
-              <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {previewUrl ? (
-              <div className="text-center space-y-3">
-                <input
-                  type="text"
-                  value={newPhoto.title}
-                  onChange={(e) => setNewPhoto({ ...newPhoto, title: e.target.value })}
-                  placeholder="작품 제목"
-                  className="w-full px-4 py-2.5 text-sm border-0 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 focus:bg-white shadow-sm transition-all placeholder:text-gray-400"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleUploadSubmit}
-                    disabled={isUploading || uploading}
-                    className="flex-1 bg-indie-pink text-white py-1 text-sm rounded hover:bg-indie-pink/80 transition-colors disabled:bg-gray-300"
-                  >
-                    {isUploading || uploading ? '업로드 중...' : '업로드'}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="flex-1 bg-gray-300 text-gray-700 py-1 text-sm rounded hover:bg-gray-400 transition-colors"
-                  >
-                    취소
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <h4 className="font-semibold text-gray-600">새 작품 등록</h4>
-                <p className="text-sm text-gray-400 mt-1">클릭하여 사진 선택</p>
-              </div>
-            )}
           </motion.div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

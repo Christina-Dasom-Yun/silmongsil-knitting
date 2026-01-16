@@ -37,10 +37,12 @@ export const useLocations = () => {
     return () => unsubscribe();
   }, []);
 
-  const addLocation = async (locationData) => {
+  const addLocation = async (locationData, currentUserId, authorName) => {
     try {
       const docRef = await addDoc(collection(db, 'locations'), {
         ...locationData,
+        authorId: currentUserId,
+        authorName: authorName,
         createdAt: new Date().toISOString()
       });
       return docRef.id;
