@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useRef } from 'react';
+import { resizeImage } from '../utils/imageUtils';
 
 const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -23,7 +24,12 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
     if (newPhoto.title && newPhoto.author && newPhoto.file) {
       setIsUploading(true);
       try {
-        await onUploadPhoto(newPhoto.file, {
+        // 이미지 리사이징 (최대 1200x1200, 품질 85%)
+        console.log('원본 이미지 크기:', (newPhoto.file.size / 1024).toFixed(2), 'KB');
+        const resizedFile = await resizeImage(newPhoto.file, 1200, 1200, 0.85);
+        console.log('리사이징된 이미지 크기:', (resizedFile.size / 1024).toFixed(2), 'KB');
+
+        await onUploadPhoto(resizedFile, {
           title: newPhoto.title,
           author: newPhoto.author,
           date: new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -33,6 +39,7 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
         setIsUploading(false);
       } catch (error) {
         console.error('Upload failed:', error);
+        alert('사진 업로드에 실패했습니다. 다시 시도해주세요.');
         setIsUploading(false);
       }
     }
