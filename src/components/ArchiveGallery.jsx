@@ -2,9 +2,9 @@ import { motion } from 'framer-motion';
 import { useState, useRef } from 'react';
 import { resizeImage } from '../utils/imageUtils';
 
-const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => {
+const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto, currentUserId, members }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [newPhoto, setNewPhoto] = useState({ title: '', author: '', file: null });
+  const [newPhoto, setNewPhoto] = useState({ title: '', file: null });
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -21,9 +21,13 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
   };
 
   const handleUploadSubmit = async () => {
-    if (newPhoto.title && newPhoto.author && newPhoto.file) {
+    if (newPhoto.title && newPhoto.file) {
       setIsUploading(true);
       try {
+        // 현재 사용자 정보 가져오기
+        const currentMember = members.find(m => m.id === currentUserId);
+        const authorName = currentMember?.name || '익명';
+
         // 이미지 리사이징 (최대 1200x1200, 품질 85%)
         console.log('원본 이미지 크기:', (newPhoto.file.size / 1024).toFixed(2), 'KB');
         const resizedFile = await resizeImage(newPhoto.file, 1200, 1200, 0.85);
@@ -31,10 +35,10 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
 
         await onUploadPhoto(resizedFile, {
           title: newPhoto.title,
-          author: newPhoto.author,
+          author: authorName,
           date: new Date().toISOString().split('T')[0].replace(/-/g, '.')
         });
-        setNewPhoto({ title: '', author: '', file: null });
+        setNewPhoto({ title: '', file: null });
         setPreviewUrl(null);
         setIsUploading(false);
       } catch (error) {
@@ -46,7 +50,7 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
   };
 
   const handleCancel = () => {
-    setNewPhoto({ title: '', author: '', file: null });
+    setNewPhoto({ title: '', file: null });
     setPreviewUrl(null);
     setIsUploading(false);
   };
@@ -182,13 +186,6 @@ const ArchiveGallery = ({ photos, uploading, onUploadPhoto, onDeletePhoto }) => 
                   value={newPhoto.title}
                   onChange={(e) => setNewPhoto({ ...newPhoto, title: e.target.value })}
                   placeholder="작품 제목"
-                  className="w-full px-4 py-2.5 text-sm border-0 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 focus:bg-white shadow-sm transition-all placeholder:text-gray-400"
-                />
-                <input
-                  type="text"
-                  value={newPhoto.author}
-                  onChange={(e) => setNewPhoto({ ...newPhoto, author: e.target.value })}
-                  placeholder="작성자"
                   className="w-full px-4 py-2.5 text-sm border-0 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 focus:bg-white shadow-sm transition-all placeholder:text-gray-400"
                 />
                 <div className="flex gap-2">

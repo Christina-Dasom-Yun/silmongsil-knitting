@@ -99,6 +99,8 @@ function App() {
         uploading={uploading}
         onUploadPhoto={uploadPhoto}
         onDeletePhoto={deletePhoto}
+        currentUserId={currentUserId}
+        members={members}
       />
 
       {/* Footer */}
