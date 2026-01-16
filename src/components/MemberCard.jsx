@@ -19,9 +19,9 @@ const MemberCard = ({ member, index, onUpdate, currentUserId }) => {
   // 포스트잇 색상 배열 (따뜻한 톤)
   const colors = [
     'bg-yellow-100',
-    'bg-indie-pink/30',
+    'bg-pink-100',
     'bg-light-beige',
-    'bg-soft-coral/40',
+    'bg-orange-100',
     'bg-purple-100',
     'bg-blue-100',
   ];
