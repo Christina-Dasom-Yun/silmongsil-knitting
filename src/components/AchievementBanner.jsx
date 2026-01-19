@@ -172,7 +172,9 @@ const AchievementBanner = ({ members }) => {
 
                         {/* 이름 & 배지 */}
                         <div>
-                          <p className="font-semibold text-gray-800">{item.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-gray-800">{item.name}</p>
+                          </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-xs">{item.badge.icon}</span>
                             <span className={`text-xs font-medium ${item.badge.color}`}>

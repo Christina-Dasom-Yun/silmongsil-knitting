@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Header from './components/Header';
 import MemberCard from './components/MemberCard';
-import MeetingCounter from './components/MeetingCounter';
 import MeetingAttendance from './components/MeetingAttendance';
 import AdminMeetingStats from './components/AdminMeetingStats';
 import MapSection from './components/MapSection';
@@ -91,22 +90,6 @@ function App() {
               ))}
             </div>
           )}
-        </motion.section>
-
-        {/* Meeting Counter Section */}
-        <motion.section
-          data-section="meeting"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mb-16"
-        >
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
-              모임기록
-            </h2>
-          </div>
-          <MeetingCounter />
         </motion.section>
 
         {/* Meeting Attendance Section */}

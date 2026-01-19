@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useMembers } from '../hooks/useMembers';
+import { isAdmin } from '../utils/adminUtils';
 import AchievementBanner from './AchievementBanner';
 
 const Header = () => {
@@ -12,6 +13,7 @@ const Header = () => {
 
   // Find current user's member info
   const currentMember = members.find(m => m.id === currentUserId);
+  const isUserAdmin = isAdmin(members, currentUserId);
 
   const handleChangeUser = () => {
     if (confirm('다른 멤버로 변경하시겠습니까?')) {
@@ -63,7 +65,12 @@ const Header = () => {
               <div className="flex items-center gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">현재 사용자</p>
-                  <p className="text-lg font-bold text-indie-black">{currentMember.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold text-indie-black">{currentMember.name}</p>
+                    {isUserAdmin && (
+                      <span className="text-xl" title="관리자">👑</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={handleChangeUser}

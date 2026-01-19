@@ -82,6 +82,7 @@ const AdminMeetingStats = () => {
           stats.map((stat, index) => {
             const meeting = meetings.find(m => m.id === stat.id);
             const attendeeNames = meeting?.attendees?.map(id => getMemberName(id)) || [];
+            const notAttendingNames = meeting?.notAttending?.map(id => getMemberName(id)) || [];
 
             return (
               <motion.div
@@ -99,22 +100,48 @@ const AdminMeetingStats = () => {
                     </div>
                     <p className="font-semibold text-gray-800">{stat.title}</p>
                   </div>
-                  <div className="bg-indie-pink/10 px-3 py-1 rounded-full">
-                    <p className="text-sm font-bold text-indie-pink">
-                      {stat.totalAttendees}명
-                    </p>
+                  <div className="flex gap-2">
+                    <div className="bg-indie-pink/10 px-3 py-1 rounded-full">
+                      <p className="text-sm font-bold text-indie-pink">
+                        ✓ {stat.totalAttendees}명
+                      </p>
+                    </div>
+                    {notAttendingNames.length > 0 && (
+                      <div className="bg-gray-200 px-3 py-1 rounded-full">
+                        <p className="text-sm font-bold text-gray-600">
+                          ✗ {notAttendingNames.length}명
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* 참석자 목록 */}
                 {attendeeNames.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">참석자:</p>
+                    <p className="text-xs text-gray-500 mb-2">✓ 참석:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {attendeeNames.map((name, idx) => (
                         <span
                           key={idx}
                           className="bg-gradient-to-r from-indie-pink/20 to-soft-coral/20 text-gray-700 text-xs px-2.5 py-1 rounded-full"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 불참자 목록 */}
+                {notAttendingNames.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">✗ 불참:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {notAttendingNames.map((name, idx) => (
+                        <span
+                          key={idx}
+                          className="bg-gray-200 text-gray-600 text-xs px-2.5 py-1 rounded-full"
                         >
                           {name}
                         </span>
