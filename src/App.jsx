@@ -2,14 +2,14 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Header from './components/Header';
 import MemberCard from './components/MemberCard';
-import YearEndReviewCard from './components/YearEndReviewCard';
 import MeetingCounter from './components/MeetingCounter';
+import MeetingAttendance from './components/MeetingAttendance';
+import AdminMeetingStats from './components/AdminMeetingStats';
 import MapSection from './components/MapSection';
 import MapSectionWithGoogle from './components/MapSectionWithGoogle';
 import ArchiveGallery from './components/ArchiveGallery';
 import UserSelectionModal from './components/UserSelectionModal';
 import MobileTabBar from './components/MobileTabBar';
-import RankingBoard from './components/RankingBoard';
 import QuickNav from './components/QuickNav';
 import { useMembers } from './hooks/useMembers';
 import { useLocations } from './hooks/useLocations';
@@ -93,50 +93,6 @@ function App() {
           )}
         </motion.section>
 
-        {/* Year-End Review Section */}
-        <motion.section
-          data-section="records"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mb-16"
-        >
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
-              뜨친자의 기록 📝
-            </h2>
-          </div>
-
-          {/* 랭킹 보드 */}
-          {!membersLoading && members.length > 0 && (
-            <div className="mb-8">
-              <RankingBoard members={members} />
-            </div>
-          )}
-
-          {membersLoading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">멤버 정보를 불러오는 중...</p>
-            </div>
-          ) : members.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">아직 등록된 멤버가 없습니다.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sortedMembers.map((member, index) => (
-                <YearEndReviewCard
-                  key={`review-${member.id}`}
-                  member={member}
-                  index={index}
-                  onUpdate={updateMember}
-                  currentUserId={currentUserId}
-                />
-              ))}
-            </div>
-          )}
-        </motion.section>
-
         {/* Meeting Counter Section */}
         <motion.section
           data-section="meeting"
@@ -151,6 +107,28 @@ function App() {
             </h2>
           </div>
           <MeetingCounter />
+        </motion.section>
+
+        {/* Meeting Attendance Section */}
+        <motion.section
+          data-section="attendance"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="mb-16"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
+              모임 출석체크 ✓
+            </h2>
+            <p className="text-sm text-gray-600">오늘의 모임에 참석했나요?</p>
+          </div>
+          <MeetingAttendance />
+
+          {/* 관리자 통계 (관리자만 보임) */}
+          <div className="mt-8">
+            <AdminMeetingStats />
+          </div>
         </motion.section>
 
         {/* Map Section */}

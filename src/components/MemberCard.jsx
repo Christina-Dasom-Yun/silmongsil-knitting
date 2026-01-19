@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import YarnCheckbox from './YarnCheckbox';
+import { getBadge, getCompletedCount } from '../utils/badgeUtils';
 
 const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, photos = [] }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -10,6 +11,8 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
   const [selectedProjectForPhoto, setSelectedProjectForPhoto] = useState(null);
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [justCompletedProject, setJustCompletedProject] = useState(null);
+  const [isReviewExpanded, setIsReviewExpanded] = useState(false);
+  const [isEditingReview, setIsEditingReview] = useState(false);
 
   // Convert legacy string array to object array with completion status
   const normalizeProjects = (projects) => {
@@ -18,7 +21,11 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
     }
     // If it's already an object array with proper structure, return as is
     if (typeof projects[0] === 'object' && projects[0] !== null && 'title' in projects[0] && 'completed' in projects[0]) {
-      return projects;
+      return projects.map(p => ({
+        title: p.title || '',
+        // 빈 제목인 프로젝트는 항상 completed: false로 설정
+        completed: p.title ? (p.completed || false) : false
+      }));
     }
     // Convert string array to object array
     return projects.map(p => ({
@@ -34,6 +41,32 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
     goal: member.goal || '',
     favoriteYarnColor: member.favoriteYarnColor || ''
   });
+
+  const [editedReview, setEditedReview] = useState({
+    completed: member.review?.completed || '',
+    frogged: member.review?.frogged || '',
+    favoriteYarn: member.review?.favoriteYarn || '',
+    favoritePattern: member.review?.favoritePattern || '',
+    favoriteItem: member.review?.favoriteItem || '',
+    commonPhrase: member.review?.commonPhrase || ''
+  });
+
+  // 배지 계산
+  const completedCount = getCompletedCount(member);
+  const badge = getBadge(completedCount);
+
+  // 뜨개기록 필드 정의
+  const reviewFields = [
+    { key: 'completed', label: '올해의 완성작', icon: '✨' },
+    { key: 'frogged', label: '푸르시오', icon: '🐸' },
+    { key: 'favoriteYarn', label: '올해의 실', icon: '🧶' },
+    { key: 'favoritePattern', label: '올해의 도안', icon: '📝' },
+    { key: 'favoriteItem', label: '올해의 뜨개템', icon: '🎁' },
+    { key: 'commonPhrase', label: '가장 많이 들은 한마디', icon: '💬' }
+  ];
+
+  // 값이 있는 필드만 필터링
+  const filledReviewFields = reviewFields.filter(field => editedReview[field.key]);
 
   // Check if this is the current user's card
   const isOwnCard = currentUserId === member.id;
@@ -170,6 +203,7 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
       onUpdate(member.id, editedMember);
     }
     setIsEditing(false);
+    setIsViewingDetail(true); // 상세보기로 돌아가기
   };
 
   const handleCancel = () => {
@@ -181,6 +215,29 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
       favoriteYarnColor: member.favoriteYarnColor || ''
     });
     setIsEditing(false);
+    setIsViewingDetail(true); // 상세보기로 돌아가기
+  };
+
+  // 뜨개기록 편집 핸들러
+  const handleReviewSave = () => {
+    if (onUpdate) {
+      onUpdate(member.id, { review: editedReview });
+    }
+    setIsEditingReview(false);
+    setIsViewingDetail(true); // 상세보기로 돌아가기
+  };
+
+  const handleReviewCancel = () => {
+    setEditedReview({
+      completed: member.review?.completed || '',
+      frogged: member.review?.frogged || '',
+      favoriteYarn: member.review?.favoriteYarn || '',
+      favoritePattern: member.review?.favoritePattern || '',
+      favoriteItem: member.review?.favoriteItem || '',
+      commonPhrase: member.review?.commonPhrase || ''
+    });
+    setIsEditingReview(false);
+    setIsViewingDetail(true); // 상세보기로 돌아가기
   };
 
   if (isEditing) {
@@ -335,6 +392,7 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
   return (
     <>
       <motion.div
+        data-member-id={member.id}
         initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
         animate={{
           opacity: 1,
@@ -547,8 +605,11 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className={`${bgColor} p-6 md:p-8 rounded-3xl card-shadow w-full max-w-2xl max-h-[90vh] overflow-y-auto`}
+            className={`${bgColor} rounded-3xl card-shadow w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col`}
           >
+            {/* 스크롤 가능한 컨텐츠 영역 */}
+            <div className="overflow-y-auto flex-1 p-6 md:p-8 pr-4 md:pr-6 custom-scrollbar">
+
             {/* 닫기 버튼 */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl md:text-2xl font-bold text-gray-800 font-gowun truncate pr-2">
@@ -720,7 +781,76 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
               )}
             </div>
 
+            {/* 뜨개기록 아코디언 */}
+            <div className="mb-6 border-t border-gray-300 pt-6">
+              <button
+                onClick={() => setIsReviewExpanded(!isReviewExpanded)}
+                className="w-full flex items-center justify-between mb-4 hover:bg-white/30 p-3 rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-2xl ${badge.color}`}>{badge.icon}</span>
+                  <div className="text-left">
+                    <h4 className="text-base font-semibold text-gray-700">뜨개기록</h4>
+                    <p className="text-xs text-gray-500">{badge.label} • 완성작 {completedCount}개</p>
+                  </div>
+                </div>
+                <motion.svg
+                  animate={{ rotate: isReviewExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-5 h-5 text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </motion.svg>
+              </button>
 
+              <AnimatePresence>
+                {isReviewExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-white/60 rounded-xl p-4 space-y-3">
+                      {filledReviewFields.length > 0 ? (
+                        filledReviewFields.map(field => (
+                          <div key={field.key} className="pb-3 border-b border-gray-200 last:border-0 last:pb-0">
+                            <div className="flex items-start gap-2">
+                              <span className="text-lg flex-shrink-0">{field.icon}</span>
+                              <div className="flex-1">
+                                <p className="text-xs font-semibold text-gray-600 mb-1">{field.label}</p>
+                                <p className="text-sm text-gray-800">{editedReview[field.key]}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400 italic text-center py-4">
+                          아직 등록된 뜨개기록이 없습니다
+                        </p>
+                      )}
+
+                      {/* 뜨개기록 편집 버튼 - 본인만 */}
+                      {isOwnCard && (
+                        <button
+                          onClick={() => {
+                            setIsViewingDetail(false);
+                            setIsEditingReview(true);
+                          }}
+                          className="w-full mt-4 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink font-semibold py-2.5 rounded-xl transition-colors"
+                        >
+                          뜨개기록 편집
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* 편집 버튼 - 자기 카드인 경우 */}
             {isOwnCard && (
@@ -742,6 +872,8 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
                 편집하기
               </button>
             )}
+            </div>
+            {/* 스크롤 영역 끝 */}
           </motion.div>
 
           {/* 사진 업로드 제안 토스트 (상세 모달 안에서) */}
@@ -796,6 +928,84 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+      )}
+
+      {/* 뜨개기록 편집 모달 */}
+      {isEditingReview && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gradient-to-br from-light-beige to-warm-cream rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar"
+          >
+            <div className="p-6 md:p-8 pr-4 md:pr-6">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={`text-3xl ${badge.color}`}>{badge.icon}</span>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-800 font-gowun">뜨개기록 편집</h3>
+                    <p className="text-sm text-gray-600">{member.name}님의 2026 뜨개 기록</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 편집 폼 */}
+              <div className="space-y-4 mb-6">
+                {reviewFields.map(field => (
+                  <div key={field.key}>
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                      <span className="text-lg">{field.icon}</span>
+                      {field.label}
+                      {field.key === 'completed' && (
+                        <span className="text-xs font-normal text-gray-500">(자동 업데이트)</span>
+                      )}
+                    </label>
+                    {field.key === 'completed' ? (
+                      <div className="bg-gray-100 p-3 rounded-xl">
+                        <p className="text-sm text-gray-700">
+                          {editedReview.completed || '아직 완성작이 없습니다'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          * 작품을 완료로 체크하면 자동으로 업데이트됩니다
+                        </p>
+                      </div>
+                    ) : (
+                      <textarea
+                        value={editedReview[field.key]}
+                        onChange={(e) => setEditedReview({
+                          ...editedReview,
+                          [field.key]: e.target.value
+                        })}
+                        placeholder={`${field.label}을(를) 입력하세요`}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indie-pink bg-white resize-none"
+                        rows={field.key === 'commonPhrase' ? 2 : 3}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* 버튼들 */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleReviewCancel}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleReviewSave}
+                  className="flex-1 bg-gradient-to-r from-indie-pink to-soft-coral text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
 

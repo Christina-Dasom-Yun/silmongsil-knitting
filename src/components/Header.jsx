@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useMembers } from '../hooks/useMembers';
+import AchievementBanner from './AchievementBanner';
 
 const Header = () => {
   const [groupName, setGroupName] = useState('실몽실 뜨개모임');
@@ -26,8 +27,8 @@ const Header = () => {
       className="w-full py-8 px-6 md:px-12"
     >
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          {/* Group Name */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+          {/* 왼쪽: 타이틀 */}
           <div className="text-center md:text-left">
             {isEditing ? (
               <input
@@ -49,7 +50,14 @@ const Header = () => {
             <p className="text-sm text-gray-600 mt-2">뜨친자들 안녕?</p>
           </div>
 
-          {/* Current User Info */}
+          {/* 중앙: Achievement Banner (모바일에서는 아래, PC에서는 우측) */}
+          <div className="w-full md:w-auto flex justify-center md:justify-end md:flex-1">
+            {members.length > 0 && (
+              <AchievementBanner members={members} />
+            )}
+          </div>
+
+          {/* 우측: Current User Info */}
           {currentMember && (
             <div className="bg-white/80 backdrop-blur-sm px-6 py-4 rounded-3xl card-shadow">
               <div className="flex items-center gap-4">
