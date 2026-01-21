@@ -18,13 +18,15 @@ const SkeletonCard = ({ index }) => (
   </motion.div>
 );
 
-const ArchiveGallery = ({ photos, onDeletePhoto, currentUserId }) => {
+const ArchiveGallery = ({ photos, onDeletePhoto, onUpdatePhoto, currentUserId }) => {
   const [filterMode, setFilterMode] = useState(() => {
     // localStorage에서 저장된 필터 모드 복원
     return localStorage.getItem('silmongsil_gallery_filter') || 'all';
   }); // 'all' or 'mine'
   const [displayCount, setDisplayCount] = useState(12); // 처음 표시할 사진 개수
   const [selectedPhoto, setSelectedPhoto] = useState(null); // 상세보기 모달용
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false); // 사진 편집 모드
+  const [editedPhotoData, setEditedPhotoData] = useState({ yarn: '', pattern: '', caption: '' }); // 편집 중인 데이터
 
   // 필터 모드 변경 시 localStorage에 저장
   useEffect(() => {
@@ -52,6 +54,40 @@ const ArchiveGallery = ({ photos, onDeletePhoto, currentUserId }) => {
   useEffect(() => {
     setDisplayCount(12);
   }, [filterMode]);
+
+  // 수정 모드 진입
+  const handleEditPhoto = () => {
+    setEditedPhotoData({
+      yarn: selectedPhoto.yarn || '',
+      pattern: selectedPhoto.pattern || '',
+      caption: selectedPhoto.caption || ''
+    });
+    setIsEditingPhoto(true);
+  };
+
+  // 수정 취소
+  const handleCancelEdit = () => {
+    setIsEditingPhoto(false);
+    setEditedPhotoData({ yarn: '', pattern: '', caption: '' });
+  };
+
+  // 수정 저장
+  const handleSaveEdit = async () => {
+    if (onUpdatePhoto && selectedPhoto) {
+      try {
+        await onUpdatePhoto(selectedPhoto.id, editedPhotoData);
+        // 로컬 상태 업데이트
+        setSelectedPhoto({
+          ...selectedPhoto,
+          ...editedPhotoData
+        });
+        setIsEditingPhoto(false);
+      } catch (error) {
+        console.error('Failed to update photo:', error);
+        alert('사진 정보 수정에 실패했습니다.');
+      }
+    }
+  };
 
   return (
     <motion.div
@@ -301,14 +337,42 @@ const ArchiveGallery = ({ photos, onDeletePhoto, currentUserId }) => {
 
               {/* Details */}
               <div className="p-8">
-                <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">
                   {selectedPhoto.projectTitle || selectedPhoto.title}
                 </h3>
 
+                {/* 사용한 실, 도안 정보 */}
+                {(selectedPhoto.yarn || selectedPhoto.pattern) && (
+                  <div className="mb-4 space-y-2">
+                    {selectedPhoto.yarn && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg flex-shrink-0">🧶</span>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-0.5">사용한 실</p>
+                          <p className="text-sm text-gray-700">{selectedPhoto.yarn}</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedPhoto.pattern && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg flex-shrink-0">📝</span>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-0.5">도안</p>
+                          <p className="text-sm text-gray-700">{selectedPhoto.pattern}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 소감 */}
                 {selectedPhoto.caption && (
-                  <p className="text-gray-600 mb-4 leading-relaxed">
-                    {selectedPhoto.caption}
-                  </p>
+                  <div className="mb-4 bg-gradient-to-br from-light-beige/30 to-warm-cream/30 rounded-2xl p-4">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">💬 소감</p>
+                    <p className="text-gray-700 leading-relaxed">
+                      {selectedPhoto.caption}
+                    </p>
+                  </div>
                 )}
 
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
