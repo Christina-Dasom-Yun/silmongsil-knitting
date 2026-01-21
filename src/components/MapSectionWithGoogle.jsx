@@ -29,8 +29,9 @@ const CustomMarker = ({ authorName, onClick, isSelected }) => (
     whileHover={{ scale: 1.3 }}
     transition={{ type: "spring", stiffness: 300, damping: 15 }}
     onClick={onClick}
-    className="cursor-pointer"
+    className="cursor-pointer group"
     style={{ transform: 'translate(-50%, -50%)' }}
+    title={authorName || '익명'}
   >
     <div className={`
       relative bg-gradient-to-br from-indie-pink to-soft-coral
@@ -42,11 +43,19 @@ const CustomMarker = ({ authorName, onClick, isSelected }) => (
       {authorName?.charAt(0) || '?'}
       <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white"></div>
     </div>
+
+    {/* 툴팁 */}
+    <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+      <div className="bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg">
+        {authorName || '익명'}
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-gray-800"></div>
+      </div>
+    </div>
   </motion.div>
 );
 
 // 커스텀 인포 카드
-const CustomInfoCard = ({ location, onClose, onDelete }) => (
+const CustomInfoCard = ({ location, onClose, onDelete, onEdit, currentUserId }) => (
   <motion.div
     initial={{ opacity: 0, y: -20, scale: 0.9 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -105,13 +114,23 @@ const CustomInfoCard = ({ location, onClose, onDelete }) => (
         </div>
       )}
 
-      {/* 삭제 버튼 */}
-      <button
-        onClick={onDelete}
-        className="w-full text-xs text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-xl transition-colors font-medium"
-      >
-        삭제하기
-      </button>
+      {/* 수정/삭제 버튼 - 본인이 추가한 장소만 */}
+      {location.authorId === currentUserId && (
+        <div className="flex gap-2">
+          <button
+            onClick={onEdit}
+            className="flex-1 text-xs text-indie-pink hover:text-indie-pink/80 hover:bg-indie-pink/10 py-2 rounded-xl transition-colors font-medium"
+          >
+            수정하기
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-xl transition-colors font-medium"
+          >
+            삭제하기
+          </button>
+        </div>
+      )}
 
       {/* 말풍선 꼬리 */}
       <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[12px] border-l-transparent border-r-transparent border-t-white"></div>
@@ -119,11 +138,12 @@ const CustomInfoCard = ({ location, onClose, onDelete }) => (
   </motion.div>
 );
 
-const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, currentUserId, members }) => {
+const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUpdateLocation, currentUserId, members }) => {
   const [map, setMap] = useState(null);
   const [showMap, setShowMap] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isAddingLocation, setIsAddingLocation] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [showAllLocations, setShowAllLocations] = useState(false);
   const [newLocation, setNewLocation] = useState({
     name: '',
@@ -132,6 +152,7 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
     lng: null,
     tags: []
   });
+  const [editingLocation, setEditingLocation] = useState(null);
   const [autocomplete, setAutocomplete] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState([]);
   const searchInputRef = useRef(null);
@@ -185,6 +206,41 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
   const handleCancel = () => {
     setNewLocation({ name: '', description: '', lat: null, lng: null, tags: [] });
     setIsAddingLocation(false);
+  };
+
+  const handleEditLocation = (location) => {
+    setEditingLocation({
+      id: location.id,
+      description: location.description || '',
+      tags: location.tags || []
+    });
+    setIsEditingLocation(true);
+    setSelectedLocation(null);
+  };
+
+  const handleUpdateLocationSubmit = async () => {
+    if (editingLocation && onUpdateLocation) {
+      await onUpdateLocation(editingLocation.id, {
+        description: editingLocation.description,
+        tags: editingLocation.tags
+      });
+      setEditingLocation(null);
+      setIsEditingLocation(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingLocation(null);
+    setIsEditingLocation(false);
+  };
+
+  const toggleEditTag = (tagId) => {
+    setEditingLocation(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tagId)
+        ? prev.tags.filter(t => t !== tagId)
+        : [...prev.tags, tagId]
+    }));
   };
 
   const onAutocompleteLoad = (autocompleteInstance) => {
@@ -351,19 +407,35 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
                   </div>
                 )}
 
-                {/* 삭제 버튼 */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteLocation(location.id);
-                  }}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 p-1 bg-white rounded-full shadow-sm"
-                  title="삭제"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                {/* 수정/삭제 버튼 - 본인이 추가한 장소만 */}
+                {location.authorId === currentUserId && (
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditLocation(location);
+                      }}
+                      className="text-indie-pink hover:text-indie-pink/80 p-1 bg-white rounded-full shadow-sm"
+                      title="수정"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteLocation(location.id);
+                      }}
+                      className="text-red-400 hover:text-red-600 p-1 bg-white rounded-full shadow-sm"
+                      title="삭제"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             ))}
           </div>
@@ -501,7 +573,9 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
                   >
                     <CustomInfoCard
                       location={selectedLocation}
+                      currentUserId={currentUserId}
                       onClose={() => setSelectedLocation(null)}
+                      onEdit={() => handleEditLocation(selectedLocation)}
                       onDelete={() => {
                         onDeleteLocation(selectedLocation.id);
                         setSelectedLocation(null);
@@ -578,8 +652,64 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
               </motion.div>
             )}
 
+            {/* Edit Location Form */}
+            {isEditingLocation && editingLocation && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-4 p-5 bg-gradient-to-br from-light-beige/50 to-warm-cream/50 rounded-3xl"
+              >
+                <p className="text-sm text-gray-800 font-bold mb-3">장소 정보 수정</p>
+
+                {/* 설명 수정 */}
+                <textarea
+                  value={editingLocation.description}
+                  onChange={(e) => setEditingLocation({ ...editingLocation, description: e.target.value })}
+                  placeholder="여기는 어떤곳인가요?"
+                  className="w-full px-4 py-3 border-0 bg-white rounded-2xl mb-3 focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm resize-none"
+                  rows="3"
+                />
+
+                {/* 태그 수정 */}
+                <p className="text-xs text-gray-600 font-medium mb-2">태그 선택 (여러 개 가능)</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {availableTags.map(tag => {
+                    const isSelected = editingLocation.tags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        onClick={() => toggleEditTag(tag.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          isSelected
+                            ? tag.color + ' ring-2 ring-offset-2 ring-indie-pink'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        #{tag.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleUpdateLocationSubmit}
+                    className="flex-1 bg-indie-pink text-white py-3 rounded-2xl hover:bg-indie-pink/80 transition-colors font-semibold"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={handleEditCancel}
+                    className="flex-1 bg-white text-gray-700 py-3 rounded-2xl hover:bg-gray-100 transition-colors font-semibold shadow-sm"
+                  >
+                    취소
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Add Location Button */}
-            {!isAddingLocation && (
+            {!isAddingLocation && !isEditingLocation && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -589,6 +719,74 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, curr
                 + 장소 추가하기
               </motion.button>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 편집 모달 (지도 외부에서도 편집 가능) */}
+      <AnimatePresence>
+        {isEditingLocation && editingLocation && !showMap && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+            onClick={handleEditCancel}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6"
+            >
+              <h3 className="text-xl font-bold text-gray-800 mb-4">장소 정보 수정</h3>
+
+              {/* 설명 수정 */}
+              <textarea
+                value={editingLocation.description}
+                onChange={(e) => setEditingLocation({ ...editingLocation, description: e.target.value })}
+                placeholder="여기는 어떤곳인가요?"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl mb-3 focus:outline-none focus:border-indie-pink resize-none"
+                rows="3"
+              />
+
+              {/* 태그 수정 */}
+              <p className="text-xs text-gray-600 font-medium mb-2">태그 선택 (여러 개 가능)</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {availableTags.map(tag => {
+                  const isSelected = editingLocation.tags.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      onClick={() => toggleEditTag(tag.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        isSelected
+                          ? tag.color + ' ring-2 ring-offset-2 ring-indie-pink'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      #{tag.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleUpdateLocationSubmit}
+                  className="flex-1 bg-indie-pink text-white py-3 rounded-2xl hover:bg-indie-pink/80 transition-colors font-semibold"
+                >
+                  저장
+                </button>
+                <button
+                  onClick={handleEditCancel}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl hover:bg-gray-300 transition-colors font-semibold"
+                >
+                  취소
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

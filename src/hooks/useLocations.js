@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   onSnapshot,
   query,
@@ -61,11 +62,24 @@ export const useLocations = () => {
     }
   };
 
+  const updateLocation = async (id, updates) => {
+    try {
+      await updateDoc(doc(db, 'locations', id), {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error updating location:', err);
+      throw err;
+    }
+  };
+
   return {
     locations,
     loading,
     error,
     addLocation,
-    deleteLocation
+    deleteLocation,
+    updateLocation
   };
 };

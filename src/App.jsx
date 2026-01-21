@@ -18,7 +18,7 @@ import { useUser } from './contexts/UserContext';
 function App() {
   // Firebase hooks
   const { members, loading: membersLoading, updateMember } = useMembers();
-  const { locations, addLocation, deleteLocation } = useLocations();
+  const { locations, addLocation, deleteLocation, updateLocation } = useLocations();
   const { photos, uploading, uploadPhoto, deletePhoto } = usePhotos();
 
   // User context
@@ -134,6 +134,7 @@ function App() {
               locations={locations}
               onAddLocation={addLocation}
               onDeleteLocation={deleteLocation}
+              onUpdateLocation={updateLocation}
               currentUserId={currentUserId}
               members={members}
             />

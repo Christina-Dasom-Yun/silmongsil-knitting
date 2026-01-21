@@ -465,22 +465,10 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
                     project.title && (
                       <motion.li
                         key={idx}
-                        className={`text-sm flex items-center gap-2 ${
-                          project.completed && !projectPhoto && isOwnCard
-                            ? 'cursor-pointer hover:bg-white/50 rounded-lg p-1 -m-1 transition-colors'
-                            : ''
-                        }`}
+                        className="text-sm flex items-center gap-2"
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        onClick={(e) => {
-                          // 자기 카드이고, 완성되었으며, 사진이 없는 프로젝트만 클릭 가능
-                          if (project.completed && !projectPhoto && isOwnCard) {
-                            e.stopPropagation();
-                            setSelectedProjectForPhoto(project);
-                            setShowPhotoUploadModal(true);
-                          }
-                        }}
                       >
                         {/* 그리드 모드: 완성 시 실타래 또는 사진 썸네일 표시 */}
                         {project.completed && (
@@ -638,37 +626,37 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
                       project.title && (
                         <motion.li
                           key={idx}
-                          className={`text-sm text-gray-700 flex items-center gap-2 ${
-                            project.completed && !projectPhoto && isOwnCard
-                              ? 'cursor-pointer hover:bg-white/50 rounded-lg p-2 -m-2 transition-colors'
-                              : ''
-                          }`}
+                          className="text-sm text-gray-700 flex items-center gap-2"
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.05 }}
-                          onClick={(e) => {
-                            // 자기 카드이고, 완성되었으며, 사진이 없는 프로젝트만 클릭 가능
-                            if (project.completed && !projectPhoto && isOwnCard) {
-                              e.stopPropagation();
-                              setSelectedProjectForPhoto(project);
-                              setShowPhotoUploadModal(true);
-                              setIsViewingDetail(false);
-                            }
-                          }}
-                          title={
-                            project.completed && !projectPhoto && isOwnCard
-                              ? '클릭하여 사진 업로드'
-                              : ''
-                          }
                         >
                           {isOwnCard ? (
                             /* 본인 카드: 클릭 가능한 체크박스 */
                             <div className="flex items-center gap-2 w-full">
                               <YarnCheckbox
                                 checked={project.completed}
-                                onChange={() => handleProjectToggle(idx)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleProjectToggle(idx);
+                                }}
                                 label={project.title}
                               />
+                              {/* 완성되었고 사진이 없으면 사진 업로드 버튼 */}
+                              {project.completed && !projectPhoto && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedProjectForPhoto(project);
+                                    setShowPhotoUploadModal(true);
+                                    setIsViewingDetail(false);
+                                  }}
+                                  className="ml-auto px-3 py-1 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink text-xs rounded-full transition-colors flex items-center gap-1"
+                                  title="사진 업로드"
+                                >
+                                  📸 사진 올리기
+                                </button>
+                              )}
                               {/* 완성되었고 사진이 있으면 썸네일 표시 */}
                               {project.completed && projectPhoto && (
                                 <motion.div
