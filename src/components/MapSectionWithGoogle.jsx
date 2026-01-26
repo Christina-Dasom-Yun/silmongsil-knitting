@@ -102,14 +102,26 @@ const CustomInfoCard = ({ location, onClose, onDelete, onEdit, currentUserId }) 
         <div className="flex flex-wrap gap-1.5 mb-3">
           {location.tags.map(tagId => {
             const tag = availableTags.find(t => t.id === tagId);
-            return tag ? (
+            // 기본 태그
+            if (tag) {
+              return (
+                <span
+                  key={tagId}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium ${tag.color}`}
+                >
+                  #{tag.label}
+                </span>
+              );
+            }
+            // 커스텀 태그
+            return (
               <span
                 key={tagId}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium ${tag.color}`}
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
               >
-                #{tag.label}
+                #{tagId}
               </span>
-            ) : null;
+            );
           })}
         </div>
       )}
@@ -156,6 +168,8 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
   const [autocomplete, setAutocomplete] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState([]);
   const searchInputRef = useRef(null);
+  const [customTagInput, setCustomTagInput] = useState(''); // 새 장소 추가 시 커스텀 태그 입력
+  const [editCustomTagInput, setEditCustomTagInput] = useState(''); // 수정 시 커스텀 태그 입력
 
   // 현재 사용자의 이름 찾기
   const currentUser = members?.find(m => m.id === currentUserId);
@@ -243,6 +257,25 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
     }));
   };
 
+  // 커스텀 태그 추가 (수정 시)
+  const handleAddEditCustomTag = () => {
+    if (editCustomTagInput.trim() && !editingLocation.tags.includes(editCustomTagInput.trim())) {
+      setEditingLocation(prev => ({
+        ...prev,
+        tags: [...prev.tags, editCustomTagInput.trim()]
+      }));
+      setEditCustomTagInput('');
+    }
+  };
+
+  // 커스텀 태그 제거 (수정 시)
+  const handleRemoveEditCustomTag = (tag) => {
+    setEditingLocation(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag)
+    }));
+  };
+
   const onAutocompleteLoad = (autocompleteInstance) => {
     setAutocomplete(autocompleteInstance);
   };
@@ -271,6 +304,25 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
       tags: prev.tags.includes(tagId)
         ? prev.tags.filter(t => t !== tagId)
         : [...prev.tags, tagId]
+    }));
+  };
+
+  // 커스텀 태그 추가 (새 장소)
+  const handleAddCustomTag = () => {
+    if (customTagInput.trim() && !newLocation.tags.includes(customTagInput.trim())) {
+      setNewLocation(prev => ({
+        ...prev,
+        tags: [...prev.tags, customTagInput.trim()]
+      }));
+      setCustomTagInput('');
+    }
+  };
+
+  // 커스텀 태그 제거 (새 장소)
+  const handleRemoveCustomTag = (tag) => {
+    setNewLocation(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag)
     }));
   };
 
@@ -395,14 +447,26 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
                   <div className="flex flex-wrap gap-1">
                     {location.tags.map(tagId => {
                       const tag = availableTags.find(t => t.id === tagId);
-                      return tag ? (
+                      // 기본 태그
+                      if (tag) {
+                        return (
+                          <span
+                            key={tagId}
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${tag.color}`}
+                          >
+                            #{tag.label}
+                          </span>
+                        );
+                      }
+                      // 커스텀 태그
+                      return (
                         <span
                           key={tagId}
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${tag.color}`}
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
                         >
-                          #{tag.label}
+                          #{tagId}
                         </span>
-                      ) : null;
+                      );
                     })}
                   </div>
                 )}
@@ -632,6 +696,48 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
                       </button>
                     );
                   })}
+
+                  {/* 사용자 정의 태그 표시 */}
+                  {newLocation.tags.filter(tag => !availableTags.some(t => t.id === tag)).map(customTag => (
+                    <div
+                      key={customTag}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ring-2 ring-offset-2 ring-indie-pink flex items-center gap-1"
+                    >
+                      #{customTag}
+                      <button
+                        onClick={() => handleRemoveCustomTag(customTag)}
+                        className="ml-1 hover:text-purple-900"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 커스텀 태그 입력 */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-600 font-medium mb-2">커스텀 태그 추가</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customTagInput}
+                      onChange={(e) => setCustomTagInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomTag();
+                        }
+                      }}
+                      placeholder="예: 뜨개방, 공방"
+                      className="flex-1 px-3 py-2 border-0 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm"
+                    />
+                    <button
+                      onClick={handleAddCustomTag}
+                      className="px-4 py-2 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink rounded-xl text-sm font-medium transition-colors"
+                    >
+                      추가
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -689,6 +795,48 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
                       </button>
                     );
                   })}
+
+                  {/* 사용자 정의 태그 표시 */}
+                  {editingLocation.tags.filter(tag => !availableTags.some(t => t.id === tag)).map(customTag => (
+                    <div
+                      key={customTag}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ring-2 ring-offset-2 ring-indie-pink flex items-center gap-1"
+                    >
+                      #{customTag}
+                      <button
+                        onClick={() => handleRemoveEditCustomTag(customTag)}
+                        className="ml-1 hover:text-purple-900"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 커스텀 태그 입력 */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-600 font-medium mb-2">커스텀 태그 추가</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editCustomTagInput}
+                      onChange={(e) => setEditCustomTagInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddEditCustomTag();
+                        }
+                      }}
+                      placeholder="예: 뜨개방, 공방"
+                      className="flex-1 px-3 py-2 border-0 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm"
+                    />
+                    <button
+                      onClick={handleAddEditCustomTag}
+                      className="px-4 py-2 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink rounded-xl text-sm font-medium transition-colors"
+                    >
+                      추가
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -753,7 +901,7 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
 
               {/* 태그 수정 */}
               <p className="text-xs text-gray-600 font-medium mb-2">태그 선택 (여러 개 가능)</p>
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {availableTags.map(tag => {
                   const isSelected = editingLocation.tags.includes(tag.id);
                   return (
@@ -770,6 +918,48 @@ const MapSectionWithGoogle = ({ locations, onAddLocation, onDeleteLocation, onUp
                     </button>
                   );
                 })}
+
+                {/* 사용자 정의 태그 표시 */}
+                {editingLocation.tags.filter(tag => !availableTags.some(t => t.id === tag)).map(customTag => (
+                  <div
+                    key={customTag}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ring-2 ring-offset-2 ring-indie-pink flex items-center gap-1"
+                  >
+                    #{customTag}
+                    <button
+                      onClick={() => handleRemoveEditCustomTag(customTag)}
+                      className="ml-1 hover:text-purple-900"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* 커스텀 태그 입력 */}
+              <div className="mb-4">
+                <p className="text-xs text-gray-600 font-medium mb-2">커스텀 태그 추가</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editCustomTagInput}
+                    onChange={(e) => setEditCustomTagInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddEditCustomTag();
+                      }
+                    }}
+                    placeholder="예: 뜨개방, 공방"
+                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indie-pink"
+                  />
+                  <button
+                    onClick={handleAddEditCustomTag}
+                    className="px-4 py-2 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink rounded-xl text-sm font-medium transition-colors"
+                  >
+                    추가
+                  </button>
+                </div>
               </div>
 
               <div className="flex gap-2">

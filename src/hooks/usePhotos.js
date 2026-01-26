@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   onSnapshot,
   query,
@@ -86,12 +87,25 @@ export const usePhotos = () => {
     }
   };
 
+  const updatePhoto = async (id, updates) => {
+    try {
+      await updateDoc(doc(db, 'photos', id), {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error updating photo:', err);
+      throw err;
+    }
+  };
+
   return {
     photos,
     loading,
     uploading,
     error,
     uploadPhoto,
-    deletePhoto
+    deletePhoto,
+    updatePhoto
   };
 };

@@ -19,7 +19,7 @@ function App() {
   // Firebase hooks
   const { members, loading: membersLoading, updateMember } = useMembers();
   const { locations, addLocation, deleteLocation, updateLocation } = useLocations();
-  const { photos, uploading, uploadPhoto, deletePhoto } = usePhotos();
+  const { photos, uploading, uploadPhoto, deletePhoto, updatePhoto } = usePhotos();
 
   // User context
   const { currentUserId, selectUser, isLoading: userLoading } = useUser();
@@ -151,6 +151,7 @@ function App() {
         uploading={uploading}
         onUploadPhoto={uploadPhoto}
         onDeletePhoto={deletePhoto}
+        onUpdatePhoto={updatePhoto}
         currentUserId={currentUserId}
         members={members}
       />

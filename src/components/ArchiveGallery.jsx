@@ -341,38 +341,97 @@ const ArchiveGallery = ({ photos, onDeletePhoto, onUpdatePhoto, currentUserId })
                   {selectedPhoto.projectTitle || selectedPhoto.title}
                 </h3>
 
-                {/* 사용한 실, 도안 정보 */}
-                {(selectedPhoto.yarn || selectedPhoto.pattern) && (
-                  <div className="mb-4 space-y-2">
-                    {selectedPhoto.yarn && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg flex-shrink-0">🧶</span>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-0.5">사용한 실</p>
-                          <p className="text-sm text-gray-700">{selectedPhoto.yarn}</p>
-                        </div>
-                      </div>
-                    )}
-                    {selectedPhoto.pattern && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg flex-shrink-0">📝</span>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-0.5">도안</p>
-                          <p className="text-sm text-gray-700">{selectedPhoto.pattern}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* 편집 모드 */}
+                {isEditingPhoto ? (
+                  <div className="mb-4 space-y-4">
+                    {/* 사용한 실 편집 */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 mb-1 block">🧶 사용한 실</label>
+                      <input
+                        type="text"
+                        value={editedPhotoData.yarn}
+                        onChange={(e) => setEditedPhotoData({ ...editedPhotoData, yarn: e.target.value })}
+                        placeholder="예: 람스울 울실, 로완 코튼..."
+                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none text-sm"
+                      />
+                    </div>
 
-                {/* 소감 */}
-                {selectedPhoto.caption && (
-                  <div className="mb-4 bg-gradient-to-br from-light-beige/30 to-warm-cream/30 rounded-2xl p-4">
-                    <p className="text-xs font-semibold text-gray-500 mb-1">💬 소감</p>
-                    <p className="text-gray-700 leading-relaxed">
-                      {selectedPhoto.caption}
-                    </p>
+                    {/* 도안 편집 */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 mb-1 block">📝 도안</label>
+                      <input
+                        type="text"
+                        value={editedPhotoData.pattern}
+                        onChange={(e) => setEditedPhotoData({ ...editedPhotoData, pattern: e.target.value })}
+                        placeholder="예: 펫블랑카 레시피북, 자체제작..."
+                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    {/* 소감 편집 */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 mb-1 block">💬 소감</label>
+                      <textarea
+                        value={editedPhotoData.caption}
+                        onChange={(e) => setEditedPhotoData({ ...editedPhotoData, caption: e.target.value })}
+                        placeholder="이 작품에 대한 소감을 남겨보세요..."
+                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none resize-none text-sm"
+                        rows={3}
+                      />
+                    </div>
+
+                    {/* 저장/취소 버튼 */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        className="flex-1 bg-indie-pink text-white py-2.5 rounded-xl hover:bg-indie-pink/80 transition-colors font-medium text-sm"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl hover:bg-gray-300 transition-colors font-medium text-sm"
+                      >
+                        취소
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {/* 사용한 실, 도안 정보 */}
+                    {(selectedPhoto.yarn || selectedPhoto.pattern) && (
+                      <div className="mb-4 space-y-2">
+                        {selectedPhoto.yarn && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg flex-shrink-0">🧶</span>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 mb-0.5">사용한 실</p>
+                              <p className="text-sm text-gray-700">{selectedPhoto.yarn}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedPhoto.pattern && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg flex-shrink-0">📝</span>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 mb-0.5">도안</p>
+                              <p className="text-sm text-gray-700">{selectedPhoto.pattern}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 소감 */}
+                    {selectedPhoto.caption && (
+                      <div className="mb-4 bg-gradient-to-br from-light-beige/30 to-warm-cream/30 rounded-2xl p-4">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">💬 소감</p>
+                        <p className="text-gray-700 leading-relaxed">
+                          {selectedPhoto.caption}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
@@ -386,20 +445,30 @@ const ArchiveGallery = ({ photos, onDeletePhoto, onUpdatePhoto, currentUserId })
                   </span>
                 </div>
 
-                {/* Delete Button for Own Photos */}
-                {selectedPhoto.authorId === currentUserId && onDeletePhoto && (
+                {/* Edit/Delete Buttons for Own Photos */}
+                {selectedPhoto.authorId === currentUserId && !isEditingPhoto && (
                   <div className="mt-6 pt-6 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        if (window.confirm('정말 이 사진을 삭제하시겠습니까?')) {
-                          onDeletePhoto(selectedPhoto.id, selectedPhoto.storagePath);
-                          setSelectedPhoto(null);
-                        }
-                      }}
-                      className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-2xl font-medium transition-all"
-                    >
-                      사진 삭제하기
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleEditPhoto}
+                        className="flex-1 bg-indie-pink/10 hover:bg-indie-pink/20 text-indie-pink py-3 rounded-2xl font-medium transition-all"
+                      >
+                        정보 수정하기
+                      </button>
+                      {onDeletePhoto && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('정말 이 사진을 삭제하시겠습니까?')) {
+                              onDeletePhoto(selectedPhoto.id, selectedPhoto.storagePath);
+                              setSelectedPhoto(null);
+                            }
+                          }}
+                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-2xl font-medium transition-all"
+                        >
+                          사진 삭제하기
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
