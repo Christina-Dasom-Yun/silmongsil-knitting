@@ -1,824 +1,411 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import YarnCheckbox from './YarnCheckbox';
 import { getBadge, getCompletedCount } from '../utils/badgeUtils';
 
 const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, photos = [] }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isViewingDetail, setIsViewingDetail] = useState(false);
+  const isOwnCard = currentUserId === member.id;
+  const [isExpanded, setIsExpanded] = useState(isOwnCard);
   const [showPhotoUploadModal, setShowPhotoUploadModal] = useState(false);
   const [selectedProjectForPhoto, setSelectedProjectForPhoto] = useState(null);
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [justCompletedProject, setJustCompletedProject] = useState(null);
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [addingProject, setAddingProject] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const editInputRef = useRef(null);
+  const addInputRef = useRef(null);
 
   // Convert legacy string array to object array with completion status
   const normalizeProjects = (projects) => {
-    if (!projects || projects.length === 0) {
-      return [{ title: '', completed: false }, { title: '', completed: false }, { title: '', completed: false }, { title: '', completed: false }, { title: '', completed: false }];
-    }
-    // If it's already an object array with proper structure, return as is
+    if (!projects || projects.length === 0) return [];
     if (typeof projects[0] === 'object' && projects[0] !== null && 'title' in projects[0] && 'completed' in projects[0]) {
       return projects.map(p => ({
         title: p.title || '',
-        // 빈 제목인 프로젝트는 항상 completed: false로 설정
         completed: p.title ? (p.completed || false) : false
       }));
     }
-    // Convert string array to object array
     return projects.map(p => ({
       title: typeof p === 'string' ? p : (p?.title || ''),
       completed: p?.completed || false
     }));
   };
 
-  const [editedMember, setEditedMember] = useState({
-    name: member.name || '',
-    projects: normalizeProjects(member.projects),
-    events: member.events || [],
-    goal: member.goal || '',
-    favoriteYarnColor: member.favoriteYarnColor || ''
-  });
-
-
-  // 배지 계산
+  const projects = normalizeProjects(member.projects).filter(p => p.title);
   const completedCount = getCompletedCount(member);
+  const totalCount = projects.length;
   const badge = getBadge(completedCount);
 
-  // Check if this is the current user's card
-  const isOwnCard = currentUserId === member.id;
+  // Focus input when editing
+  useEffect(() => {
+    if (editingIdx !== null && editInputRef.current) editInputRef.current.focus();
+  }, [editingIdx]);
+  useEffect(() => {
+    if (addingProject && addInputRef.current) addInputRef.current.focus();
+  }, [addingProject]);
 
-  // 완성된 프로젝트 중 사진이 업로드되지 않은 프로젝트 찾기
-  const getProjectsWithoutPhotos = () => {
-    const completed = normalizeProjects(member.projects).filter(p => p.completed && p.title);
-    return completed.filter(project => {
-      // 해당 프로젝트 제목과 작성자로 업로드된 사진이 있는지 확인
-      const hasPhoto = photos.some(
-        photo => photo.authorId === member.id && photo.projectTitle === project.title
-      );
-      return !hasPhoto;
-    });
-  };
-
-  // 프로젝트별 사진 정보 가져오기
   const getPhotoForProject = (projectTitle) => {
     return photos.find(
       photo => photo.authorId === member.id && photo.projectTitle === projectTitle
     );
   };
 
-  const projectsWithoutPhotos = getProjectsWithoutPhotos();
-
-  // 이름 길이에 따른 폰트 크기 계산
-  const getNameFontSize = (name) => {
-    const length = name?.length || 0;
-    if (length <= 5) return 'text-xl'; // 짧은 이름
-    if (length <= 8) return 'text-lg'; // 중간 이름
-    if (length <= 12) return 'text-base'; // 긴 이름
-    return 'text-sm'; // 매우 긴 이름
-  };
-
-  // 포스트잇 색상 배열 (따뜻한 톤)
-  const colors = [
-    'bg-yellow-100',
-    'bg-pink-100',
-    'bg-light-beige',
-    'bg-orange-100',
-    'bg-purple-100',
-    'bg-blue-100',
-  ];
-
-  const bgColor = colors[index % colors.length];
-
-  const handleProjectChange = (idx, value) => {
-    const newProjects = [...editedMember.projects];
-    newProjects[idx] = { ...newProjects[idx], title: value };
-    setEditedMember({ ...editedMember, projects: newProjects });
+  // Progress dots
+  const renderProgress = () => {
+    if (totalCount === 0) return <span className="text-xs text-gray-400">작품 없음</span>;
+    return (
+      <div className="flex items-center gap-1.5">
+        <div className="flex gap-0.5">
+          {projects.map((p, i) => (
+            <div
+              key={i}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                p.completed
+                  ? 'bg-gradient-to-br from-indie-pink to-soft-coral shadow-sm'
+                  : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-gray-500 ml-1">
+          {completedCount}/{totalCount}
+        </span>
+      </div>
+    );
   };
 
   const handleProjectToggle = async (idx) => {
-    // 낙관적 업데이트: 즉시 로컬 상태 변경
-    const newProjects = [...normalizeProjects(member.projects)];
-    const wasCompleted = newProjects[idx].completed;
-    newProjects[idx] = { ...newProjects[idx], completed: !newProjects[idx].completed };
+    const allProjects = normalizeProjects(member.projects);
+    // Find the actual index in the full array (including empty ones)
+    const projectsWithTitle = [];
+    const actualIndices = [];
+    allProjects.forEach((p, i) => {
+      if (p.title) {
+        projectsWithTitle.push(p);
+        actualIndices.push(i);
+      }
+    });
+    const actualIdx = actualIndices[idx];
+    if (actualIdx === undefined) return;
 
-    // 완성 체크를 했을 때 (false → true)
-    const justCompleted = !wasCompleted && newProjects[idx].completed;
+    const newProjects = [...allProjects];
+    const wasCompleted = newProjects[actualIdx].completed;
+    newProjects[actualIdx] = { ...newProjects[actualIdx], completed: !wasCompleted };
 
-    // Get completed project titles
+    const justCompleted = !wasCompleted;
+
     const completedTitles = newProjects
       .filter(p => p.completed && p.title)
       .map(p => p.title)
       .join(', ');
 
-    // 백그라운드에서 Firebase 업데이트 (await 없이 비동기 실행)
     if (onUpdate) {
-      // Firebase는 onSnapshot으로 실시간 동기화되므로
-      // 업데이트 후 자동으로 모든 클라이언트에 반영됨
       onUpdate(member.id, {
         projects: newProjects,
-        review: {
-          ...(member.review || {}),
-          completed: completedTitles
-        }
-      }).catch(err => {
-        console.error('Failed to update project:', err);
-        // 에러 발생 시 사용자에게 알림 (선택적)
-      });
+        review: { ...(member.review || {}), completed: completedTitles }
+      }).catch(err => console.error('Failed to update project:', err));
     }
 
-    // 완성 체크 시 사진 업로드 제안
-    if (justCompleted && isOwnCard && newProjects[idx].title) {
-      // 해당 프로젝트에 이미 사진이 있는지 확인
+    if (justCompleted && isOwnCard && newProjects[actualIdx].title) {
       const hasPhoto = photos.some(
-        photo => photo.authorId === member.id && photo.projectTitle === newProjects[idx].title
+        photo => photo.authorId === member.id && photo.projectTitle === newProjects[actualIdx].title
       );
-
       if (!hasPhoto) {
-        setJustCompletedProject(newProjects[idx]);
+        setJustCompletedProject(newProjects[actualIdx]);
         setShowUploadPrompt(true);
       }
     }
   };
 
-  const handleAddProject = () => {
-    setEditedMember({
-      ...editedMember,
-      projects: [...editedMember.projects, { title: '', completed: false }]
-    });
+  // Inline edit: start
+  const startEditing = (idx) => {
+    if (!isOwnCard) return;
+    setEditingIdx(idx);
+    setEditingValue(projects[idx].title);
   };
 
-  const handleRemoveProject = (idx) => {
-    const projectToRemove = editedMember.projects[idx];
+  // Inline edit: save
+  const saveEdit = () => {
+    if (editingIdx === null) return;
+    const allProjects = normalizeProjects(member.projects);
+    const projectsWithTitle = [];
+    const actualIndices = [];
+    allProjects.forEach((p, i) => {
+      if (p.title) {
+        projectsWithTitle.push(p);
+        actualIndices.push(i);
+      }
+    });
+    const actualIdx = actualIndices[editingIdx];
+    if (actualIdx === undefined) return;
 
-    // 완성된 프로젝트는 삭제 불가
-    if (projectToRemove.completed) {
-      alert('완성된 작품은 삭제할 수 없습니다. 체크를 해제한 후 삭제해주세요.');
-      return;
+    const newProjects = [...allProjects];
+    const trimmed = editingValue.trim();
+
+    if (trimmed === '') {
+      // Delete project if empty (but not completed ones)
+      if (newProjects[actualIdx].completed) {
+        setEditingIdx(null);
+        return;
+      }
+      newProjects.splice(actualIdx, 1);
+    } else {
+      newProjects[actualIdx] = { ...newProjects[actualIdx], title: trimmed };
     }
 
-    const newProjects = editedMember.projects.filter((_, i) => i !== idx);
-
-    // review.completed 업데이트
     const completedTitles = newProjects
       .filter(p => p.completed && p.title)
       .map(p => p.title)
       .join(', ');
 
-    setEditedMember({
-      ...editedMember,
-      projects: newProjects,
-      review: {
-        ...(editedMember.review || {}),
-        completed: completedTitles
-      }
-    });
-  };
-
-  const handleSave = () => {
     if (onUpdate) {
-      onUpdate(member.id, editedMember);
+      onUpdate(member.id, {
+        projects: newProjects,
+        review: { ...(member.review || {}), completed: completedTitles }
+      });
     }
-    setIsEditing(false);
-    setIsViewingDetail(true); // 상세보기로 돌아가기
+    setEditingIdx(null);
   };
 
-  const handleCancel = () => {
-    setEditedMember({
-      name: member.name || '',
-      projects: normalizeProjects(member.projects),
-      events: member.events || [],
-      goal: member.goal || '',
-      favoriteYarnColor: member.favoriteYarnColor || ''
-    });
-    setIsEditing(false);
-    setIsViewingDetail(true); // 상세보기로 돌아가기
+  // Add new project
+  const addProject = () => {
+    const trimmed = newProjectTitle.trim();
+    if (!trimmed) {
+      setAddingProject(false);
+      return;
+    }
+    const allProjects = normalizeProjects(member.projects);
+    const newProjects = [...allProjects, { title: trimmed, completed: false }];
+
+    if (onUpdate) {
+      onUpdate(member.id, { projects: newProjects });
+    }
+    setNewProjectTitle('');
+    setAddingProject(false);
   };
 
-
-  if (isEditing) {
-    return (
-      <>
-        {/* 편집 모달 오버레이 */}
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-0 md:p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`${bgColor} p-6 md:p-8 md:rounded-3xl card-shadow w-full md:max-w-2xl h-full md:h-auto md:max-h-[90vh] overflow-y-auto`}
-          >
-            {/* 닫기 버튼 (모바일에만 표시) */}
-            <div className="flex justify-between items-center mb-6 md:hidden">
-              <h2 className="text-xl font-bold text-gray-800 font-gowun">카드 편집</h2>
-              <button
-                onClick={handleCancel}
-                className="p-2 hover:bg-white/50 rounded-full transition-colors"
-              >
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* 이름 편집 */}
-            <div className="mb-4">
-              <input
-                type="text"
-                value={editedMember.name}
-                onChange={(e) => setEditedMember({ ...editedMember, name: e.target.value })}
-                className="text-xl font-bold bg-white/70 backdrop-blur-sm border-0 px-4 py-3 w-full rounded-2xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
-                placeholder="이름"
-              />
-            </div>
-
-            {/* 작품 편집 */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-gray-600">올해 뜨고 싶은 작품 🧶</h4>
-                <button
-                  onClick={handleAddProject}
-                  className="flex items-center gap-1 px-3 py-1 bg-indie-pink/80 hover:bg-indie-pink text-white rounded-full text-xs font-semibold transition-colors"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  추가
-                </button>
-              </div>
-              <div className="space-y-2">
-                {editedMember.projects.map((project, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={project.title}
-                      onChange={(e) => handleProjectChange(idx, e.target.value)}
-                      className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-2.5 flex-1 rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
-                      placeholder={`작품 ${idx + 1}`}
-                    />
-                    {editedMember.projects.length > 1 && (
-                      <button
-                        onClick={() => handleRemoveProject(idx)}
-                        disabled={project.completed}
-                        className={`p-2 rounded-xl transition-colors ${
-                          project.completed
-                            ? 'bg-gray-200/70 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-300/70 hover:bg-red-400 hover:text-white'
-                        }`}
-                        title={project.completed ? '완성된 작품은 삭제할 수 없습니다' : '삭제'}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 좋아하는 실 색 편집 */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-600 mb-3">올해 가장 떠보고 싶은 실 색은? 🎨</h4>
-              <input
-                type="text"
-                value={editedMember.favoriteYarnColor}
-                onChange={(e) => setEditedMember({ ...editedMember, favoriteYarnColor: e.target.value })}
-                className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-2.5 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
-                placeholder="예: 파스텔 핑크, 진한 네이비, 머스타드 옐로우"
-              />
-            </div>
-
-            {/* 목표 편집 */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-600 mb-3">올해의 뜨개 목표 🎯</h4>
-              <textarea
-                value={editedMember.goal}
-                onChange={(e) => setEditedMember({ ...editedMember, goal: e.target.value })}
-                className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-3 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400 resize-none"
-                rows="3"
-                placeholder="목표를 입력하세요"
-              />
-            </div>            
-
-            {/* 이벤트 편집 */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-600 mb-3">열렸으면 좋을것 같은 이벤트 ✨</h4>
-              <input
-                type="text"
-                value={editedMember.events.join(', ')}
-                onChange={(e) => setEditedMember({ ...editedMember, events: e.target.value.split(',').map(s => s.trim()) })}
-                className="text-sm bg-white/70 backdrop-blur-sm border-0 px-4 py-2.5 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-indie-pink/50 shadow-sm transition-all placeholder:text-gray-400"
-                placeholder="쉼표로 구분 (예: 뜨개상영회, 기차뜨개여행)"
-              />
-            </div>
-
-
-
-
-
-            {/* 저장/취소 버튼 */}
-            <div className="flex gap-3 sticky bottom-0 bg-inherit pt-4 pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:static md:pb-0">
-              <button
-                onClick={handleSave}
-                className="flex-1 bg-indie-pink text-white py-3 md:py-3 rounded-xl hover:bg-indie-pink/80 transition-colors font-semibold shadow-lg"
-              >
-                저장
-              </button>
-              <button
-                onClick={handleCancel}
-                className="flex-1 bg-gray-300 text-gray-700 py-3 md:py-3 rounded-xl hover:bg-gray-400 transition-colors font-semibold hidden md:block"
-              >
-                취소
-              </button>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* 원래 카드 자리 유지용 플레이스홀더 (데스크톱만) */}
-        <div className={`${bgColor} p-6 rounded-3xl card-shadow opacity-50 hidden md:block`}>
-          <div className="mb-4">
-            <h3 className="text-xl font-bold text-gray-800">{member.name}</h3>
-            <div className="w-12 h-1 bg-indie-pink rounded-full mt-2"></div>
-          </div>
-          <p className="text-sm text-gray-500 text-center py-8">편집 중...</p>
-        </div>
-      </>
-    );
-  }
+  // Pastel colors for the left accent
+  const accentColors = [
+    'from-yellow-300 to-yellow-400',
+    'from-pink-300 to-pink-400',
+    'from-orange-300 to-orange-400',
+    'from-purple-300 to-purple-400',
+    'from-blue-300 to-blue-400',
+    'from-green-300 to-green-400',
+  ];
+  const accent = accentColors[index % accentColors.length];
 
   return (
     <>
       <motion.div
-        data-member-id={member.id}
-        initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-        animate={{
-          opacity: 1,
-          scale: 1,
-          rotate: 0,
-          y: isOwnCard ? -8 : 0
-        }}
-        transition={{
-          duration: 0.5,
-          delay: index * 0.05,
-          type: "spring",
-          stiffness: 100
-        }}
-        whileHover={{
-          scale: 1.05,
-          rotate: isHovered ? 2 : 0,
-          zIndex: 10
-        }}
-        onHoverStart={() => setIsHovered(true)}
-        onHoverEnd={() => setIsHovered(false)}
-        onClick={() => setIsViewingDetail(true)}
-        className={`${bgColor} p-6 rounded-3xl card-shadow transition-all relative cursor-pointer ${
-          isOwnCard
-            ? 'ring-4 ring-indie-pink shadow-[0_0_30px_rgba(255,182,193,0.4)] ring-offset-2'
-            : ''
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: index * 0.03 }}
+        className={`bg-white/80 backdrop-blur-sm rounded-2xl card-shadow transition-all break-inside-avoid ${
+          isOwnCard ? 'ring-2 ring-indie-pink/30 shadow-lg shadow-indie-pink/10' : ''
         }`}
-        style={{ maxHeight: '400px' }}
       >
-        {/* 편집 버튼 - 자기 카드에만 표시 */}
-        {isOwnCard && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // 편집 모드 진입 시 최신 member 데이터로 초기화
-              setEditedMember({
-                name: member.name || '',
-                projects: normalizeProjects(member.projects),
-                events: member.events || [],
-                goal: member.goal || '',
-                favoriteYarnColor: member.favoriteYarnColor || ''
-              });
-              setIsEditing(true);
-            }}
-            className="absolute top-4 right-4 bg-indie-pink text-white hover:bg-indie-pink/80 p-2 rounded-full transition-colors shadow-lg z-10"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
-        )}
-
-        {/* 카드 내용 - 고정 높이로 제한 */}
-        <div className="overflow-hidden" style={{ maxHeight: '340px' }}>
-          {/* 멤버 이름 */}
-          <div className="mb-4">
-            <h3 className={`${getNameFontSize(member.name)} font-bold text-gray-800 font-gowun truncate`}>
-              {member.name}
-            </h3>
-            <div className="w-12 h-1 bg-indie-pink rounded-full mt-2"></div>
-          </div>
-
-          {/* 올해 뜨고 싶은 작품 */}
-          <div className="mb-3">
-            <h4 className="text-sm font-semibold text-gray-600 mb-1">올해 뜨고 싶은 작품 🧶</h4>
-            {normalizeProjects(member.projects).some(p => p.title) && (
-              <ul className="space-y-1.5">
-                {normalizeProjects(member.projects)?.slice(0, 3).map((project, idx) => {
-                  const projectPhoto = getPhotoForProject(project.title);
-                  return (
-                    project.title && (
-                      <motion.li
-                        key={idx}
-                        className="text-sm flex items-center gap-2"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                      >
-                        {/* 그리드 모드: 완성 시 실타래 또는 사진 썸네일 표시 */}
-                        {project.completed && (
-                          projectPhoto ? (
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 12
-                              }}
-                              className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-indie-pink/30"
-                            >
-                              <img
-                                src={projectPhoto.imageUrl}
-                                alt={project.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </motion.div>
-                          ) : (
-                            <motion.span
-                              initial={{ scale: 0, rotate: -45 }}
-                              animate={{ scale: 1, rotate: 0 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 12
-                              }}
-                              className="text-base flex-shrink-0"
-                            >
-                              🧶
-                            </motion.span>
-                          )
-                        )}
-                        <span className={`line-clamp-1 transition-all flex-1 ${
-                          project.completed
-                            ? 'font-semibold text-indie-pink'
-                            : 'text-gray-700'
-                        }`}>
-                          {project.title}
-                        </span>
-                      </motion.li>
-                    )
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-            {/* 좋아하는 실 색 */}
-          <div className="mb-3">
-            <h4 className="text-sm font-semibold text-gray-600 mb-1">가장 떠보고 싶은 실 색 🎨</h4>
-            {member.favoriteYarnColor && (
-              <p className="text-sm text-gray-700 line-clamp-1">{member.favoriteYarnColor}</p>
-            )}
-          </div>
-        
-
-          {/* 올해의 목표 */}
-          <div className="mb-3">
-            <h4 className="text-sm font-semibold text-gray-600 mb-1">올해의 목표 🎯</h4>
-            {member.goal && (
-              <p className="text-sm text-gray-700 italic line-clamp-2">"{member.goal}"</p>
-            )}
-          </div>
-
-
-          {/* 참가 희망 이벤트 */}
-          <div className="mb-3">
-            <h4 className="text-sm font-semibold text-gray-600 mb-1">열렸으면 좋을것 같은 이벤트 ✨</h4>
-            {member.events && member.events.some(e => e) && (
-              <div className="flex flex-wrap gap-2">
-                {member.events?.slice(0, 3).map((event, idx) => (
-                  event && (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-white/60 rounded-full text-xs text-gray-700"
-                    >
-                      {event}
-                    </span>
-                  )
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 확장 아이콘 */}
-        <div className="absolute bottom-3 right-3 p-2 bg-white/80 rounded-full shadow-sm">
-          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-        </div>
-      </motion.div>
-
-      {/* 사진 업로드 모달 */}
-      <AnimatePresence>
-        {showPhotoUploadModal && (
-          <PhotoUploadModal
-            member={member}
-            completedProjects={projectsWithoutPhotos}
-            selectedProject={selectedProjectForPhoto}
-            onClose={() => {
-              setShowPhotoUploadModal(false);
-              setSelectedProjectForPhoto(null);
-            }}
-            onSelectProject={setSelectedProjectForPhoto}
-            onUploadPhoto={onUploadPhoto}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* 상세보기 모달 */}
-      {isViewingDetail && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          onClick={() => setIsViewingDetail(false)}
+        {/* Collapsed header - always visible */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-3 px-5 py-4 hover:bg-white/50 transition-colors text-left rounded-2xl"
         >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className={`${bgColor} rounded-3xl card-shadow w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col`}
-          >
-            {/* 스크롤 가능한 컨텐츠 영역 */}
-            <div className="overflow-y-auto flex-1 p-6 md:p-8 pr-4 md:pr-6 custom-scrollbar">
+          {/* Left accent bar */}
+          <div className={`w-1 h-10 rounded-full bg-gradient-to-b ${accent} flex-shrink-0`} />
 
-            {/* 닫기 버튼 */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 font-gowun truncate pr-2">
-                {member.name}님의 카드
-              </h2>
-              <button
-                onClick={() => setIsViewingDetail(false)}
-                className="p-2 hover:bg-white/50 rounded-full transition-colors flex-shrink-0"
-              >
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          {/* Badge icon */}
+          <span className="text-xl flex-shrink-0">{badge.icon}</span>
+
+          {/* Name */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
+              {isOwnCard && (
+                <span className="text-[10px] bg-indie-pink/10 text-indie-pink px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                  나
+                </span>
+              )}
             </div>
+            <div className="mt-1">{renderProgress()}</div>
+          </div>
 
-            {/* 올해 뜨고 싶은 작품 */}
-            <div className="mb-6">
-              <h4 className="text-base font-semibold text-gray-600 mb-3">
-                올해 뜨고 싶은 작품 🧶
-              </h4>
-              {normalizeProjects(member.projects).some(p => p.title) ? (
-                <ul className="space-y-2">
-                  {normalizeProjects(member.projects)?.map((project, idx) => {
-                    const projectPhoto = getPhotoForProject(project.title);
-                    return (
-                      project.title && (
+          {/* Expand/collapse arrow */}
+          <motion.div
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-gray-400 flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </motion.div>
+        </button>
+
+        {/* Expanded content - pushes grid down */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="px-5 pb-5 pt-1 border-t border-gray-100">
+                {/* Project list */}
+                {projects.length > 0 ? (
+                  <ul className="space-y-2 mt-3">
+                    {projects.map((project, idx) => {
+                      const projectPhoto = getPhotoForProject(project.title);
+                      const isEditingThis = editingIdx === idx;
+
+                      return (
                         <motion.li
                           key={idx}
-                          className="text-sm text-gray-700 flex items-center gap-2"
-                          initial={{ opacity: 0, x: -10 }}
+                          initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
+                          transition={{ delay: idx * 0.03 }}
+                          className="flex items-center gap-2 group"
                         >
                           {isOwnCard ? (
-                            /* 본인 카드: 클릭 가능한 체크박스 */
-                            <div className="flex items-center gap-2 w-full">
+                            // Own card: interactive checkbox + inline edit
+                            <>
                               <YarnCheckbox
                                 checked={project.completed}
                                 onChange={(e) => {
                                   e.stopPropagation();
                                   handleProjectToggle(idx);
                                 }}
-                                label={project.title}
+                                label=""
                               />
-                              {/* 완성되었고 사진이 없으면 사진 업로드 버튼 */}
+                              {isEditingThis ? (
+                                <input
+                                  ref={editInputRef}
+                                  value={editingValue}
+                                  onChange={(e) => setEditingValue(e.target.value)}
+                                  onBlur={saveEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Escape') setEditingIdx(null);
+                                  }}
+                                  className="flex-1 text-sm bg-indie-pink/5 border border-indie-pink/30 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-indie-pink/40"
+                                />
+                              ) : (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditing(idx);
+                                  }}
+                                  className={`flex-1 text-sm cursor-text hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors ${
+                                    project.completed
+                                      ? 'font-semibold text-indie-pink'
+                                      : 'text-gray-700'
+                                  }`}
+                                >
+                                  {project.title}
+                                </span>
+                              )}
+                              {/* Photo thumbnail or upload button */}
+                              {project.completed && projectPhoto && (
+                                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-indie-pink/30">
+                                  <img src={projectPhoto.imageUrl} alt={project.title} className="w-full h-full object-cover" />
+                                </div>
+                              )}
                               {project.completed && !projectPhoto && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedProjectForPhoto(project);
                                     setShowPhotoUploadModal(true);
-                                    setIsViewingDetail(false);
                                   }}
-                                  className="ml-auto px-3 py-1 bg-indie-pink/20 hover:bg-indie-pink/30 text-indie-pink text-xs rounded-full transition-colors flex items-center gap-1"
-                                  title="사진 업로드"
+                                  className="text-xs text-indie-pink/60 hover:text-indie-pink transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                                  title="사진 올리기"
                                 >
-                                  📸 사진 올리기
+                                  📸
                                 </button>
                               )}
-                              {/* 완성되었고 사진이 있으면 썸네일 표시 */}
-                              {project.completed && projectPhoto && (
-                                <motion.div
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  transition={{
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 12
-                                  }}
-                                  className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-indie-pink/30 ml-auto"
-                                    >
-                                  <img
-                                    src={projectPhoto.imageUrl}
-                                    alt={project.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </motion.div>
-                              )}
-                            </div>
+                            </>
                           ) : (
-                            /* 다른 사람 카드: 읽기 전용, 체크 상태만 표시 */
+                            // Other's card: read-only
                             <>
-                              <motion.span
-                                className="text-base"
-                                animate={{
-                                  scale: project.completed ? [1, 1.2, 1] : 1,
-                                  rotate: project.completed ? [0, -10, 10, 0] : 0
-                                }}
-                                transition={{
-                                  duration: 0.5,
-                                  type: "spring",
-                                  stiffness: 300
-                                }}
-                              >
+                              <span className="text-base flex-shrink-0">
                                 {project.completed ? '🧶' : '○'}
-                              </motion.span>
-                              <span className={project.completed ? 'font-semibold text-indie-pink' : ''}>
+                              </span>
+                              <span className={`flex-1 text-sm ${
+                                project.completed ? 'font-semibold text-indie-pink' : 'text-gray-700'
+                              }`}>
                                 {project.title}
                               </span>
-                              {/* 완성되었고 사진이 있으면 썸네일 표시 */}
                               {project.completed && projectPhoto && (
-                                <motion.div
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  transition={{
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 12
-                                  }}
-                                  className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-indie-pink/30 ml-auto"
-                                    >
-                                  <img
-                                    src={projectPhoto.imageUrl}
-                                    alt={project.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </motion.div>
+                                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-indie-pink/30">
+                                  <img src={projectPhoto.imageUrl} alt={project.title} className="w-full h-full object-cover" />
+                                </div>
                               )}
                             </>
                           )}
                         </motion.li>
-                      )
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-400 italic">아직 등록된 작품이 없습니다</p>
-              )}
-            </div>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-400 italic mt-3">아직 등록된 작품이 없습니다</p>
+                )}
 
-                        {/* 좋아하는 실 색 */}
-            <div className="mb-6">
-              <h4 className="text-base font-semibold text-gray-600 mb-3">가장 떠보고 싶은 실 색 🎨</h4>
-              {member.favoriteYarnColor ? (
-                <p className="text-sm text-gray-700">{member.favoriteYarnColor}</p>
-              ) : (
-                <p className="text-sm text-gray-400 italic">아직 등록된 색상이 없습니다</p>
-              )}
-            </div>
-
-            {/* 올해의 목표 */}
-            <div className="mb-6">
-              <h4 className="text-base font-semibold text-gray-600 mb-3">올해의 목표 🎯</h4>
-              {member.goal ? (
-                <p className="text-sm text-gray-700 italic">"{member.goal}"</p>
-              ) : (
-                <p className="text-sm text-gray-400 italic">아직 등록된 목표가 없습니다</p>
-              )}
-            </div>
-
-            {/* 참가 희망 이벤트 */}
-            <div className="mb-6">
-              <h4 className="text-base font-semibold text-gray-600 mb-3">열렸으면 좋을것 같은 이벤트 ✨</h4>
-              {member.events && member.events.some(e => e) ? (
-                <div className="flex flex-wrap gap-2">
-                  {member.events?.map((event, idx) => (
-                    event && (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 bg-white/60 rounded-full text-sm text-gray-700"
+                {/* Add project (own card only) */}
+                {isOwnCard && (
+                  <div className="mt-3">
+                    {addingProject ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={addInputRef}
+                          value={newProjectTitle}
+                          onChange={(e) => setNewProjectTitle(e.target.value)}
+                          onBlur={addProject}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') addProject();
+                            if (e.key === 'Escape') { setAddingProject(false); setNewProjectTitle(''); }
+                          }}
+                          placeholder="작품 이름 입력..."
+                          className="flex-1 text-sm bg-indie-pink/5 border border-indie-pink/30 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-indie-pink/40 placeholder:text-gray-400"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAddingProject(true)}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-indie-pink transition-colors mt-1"
                       >
-                        {event}
-                      </span>
-                    )
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 italic">아직 등록된 이벤트가 없습니다</p>
-              )}
-            </div>
-
-            {/* 배지 표시 */}
-            <div className="mb-6 border-t border-gray-300 pt-6">
-              <div className="flex items-center gap-3 p-3 bg-white/40 rounded-xl">
-                <span className={`text-3xl ${badge.color}`}>{badge.icon}</span>
-                <div>
-                  <h4 className="text-base font-semibold text-gray-700">{badge.label}</h4>
-                  <p className="text-sm text-gray-500">완성작 {completedCount}개</p>
-                </div>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        작품 추가
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
-            {/* 편집 버튼 - 자기 카드인 경우 */}
-            {isOwnCard && (
-              <button
-                onClick={() => {
-                  // 편집 모드 진입 시 최신 member 데이터로 초기화
-                  setEditedMember({
-                    name: member.name || '',
-                    projects: normalizeProjects(member.projects),
-                    events: member.events || [],
-                    goal: member.goal || '',
-                    favoriteYarnColor: member.favoriteYarnColor || ''
-                  });
-                  setIsViewingDetail(false);
-                  setIsEditing(true);
-                }}
-                className="w-full mt-6 bg-indie-pink text-white py-3 rounded-xl hover:bg-indie-pink/80 transition-colors font-semibold"
-              >
-                편집하기
-              </button>
-            )}
-            </div>
-            {/* 스크롤 영역 끝 */}
-          </motion.div>
-
-          {/* 사진 업로드 제안 토스트 (상세 모달 안에서) */}
-          <AnimatePresence>
-            {showUploadPrompt && justCompletedProject && (
-              <motion.div
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                onClick={(e) => e.stopPropagation()}
-                className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[60] w-[90%] max-w-md"
-              >
-                <div className="bg-gradient-to-r from-indie-pink to-soft-coral p-6 rounded-3xl shadow-2xl">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-3xl">🎉</span>
-                    <div className="flex-1">
-                      <h3 className="text-white font-bold text-lg">완성 축하해요!</h3>
-                      <p className="text-white/90 text-sm">"{justCompletedProject.title}"</p>
-                    </div>
-                  </div>
-                  <p className="text-white/90 text-sm mb-4">
-                    지금 사진을 올릴까요?
-                  </p>
-                  <div className="flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setShowUploadPrompt(false);
-                        setSelectedProjectForPhoto(justCompletedProject);
-                        setShowPhotoUploadModal(true);
-                        setIsViewingDetail(false);
-                      }}
-                      className="flex-1 bg-white text-indie-pink font-semibold py-3 px-4 rounded-full hover:bg-white/90 transition-all"
-                    >
-                      지금 올리기 📸
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setShowUploadPrompt(false);
-                        setJustCompletedProject(null);
-                      }}
-                      className="flex-1 bg-white/20 text-white font-medium py-3 px-4 rounded-full hover:bg-white/30 transition-all"
-                    >
-                      나중에
-                    </motion.button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-
-      {/* 사진 업로드 제안 토스트 (그리드 카드에서) */}
+      {/* Photo upload modal */}
       <AnimatePresence>
-        {showUploadPrompt && justCompletedProject && !isViewingDetail && (
+        {showPhotoUploadModal && (
+          <PhotoUploadModal
+            member={member}
+            completedProjects={normalizeProjects(member.projects).filter(p => p.completed && p.title).filter(project => !photos.some(photo => photo.authorId === member.id && photo.projectTitle === project.title))}
+            selectedProject={selectedProjectForPhoto}
+            onClose={() => { setShowPhotoUploadModal(false); setSelectedProjectForPhoto(null); }}
+            onSelectProject={setSelectedProjectForPhoto}
+            onUploadPhoto={onUploadPhoto}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Upload prompt toast */}
+      <AnimatePresence>
+        {showUploadPrompt && justCompletedProject && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -834,9 +421,7 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
                   <p className="text-white/90 text-sm">"{justCompletedProject.title}"</p>
                 </div>
               </div>
-              <p className="text-white/90 text-sm mb-4">
-                지금 사진을 올릴까요?
-              </p>
+              <p className="text-white/90 text-sm mb-4">지금 사진을 올릴까요?</p>
               <div className="flex gap-2">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -853,10 +438,7 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setShowUploadPrompt(false);
-                    setJustCompletedProject(null);
-                  }}
+                  onClick={() => { setShowUploadPrompt(false); setJustCompletedProject(null); }}
                   className="flex-1 bg-white/20 text-white font-medium py-3 px-4 rounded-full hover:bg-white/30 transition-all"
                 >
                   나중에
@@ -870,7 +452,7 @@ const MemberCard = ({ member, index, onUpdate, currentUserId, onUploadPhoto, pho
   );
 };
 
-// 사진 업로드 모달 컴포넌트
+// Photo upload modal (kept from original)
 const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose, onSelectProject, onUploadPhoto }) => {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -884,19 +466,15 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
     if (file) {
       setPhotoFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
+      reader.onloadend = () => setPhotoPreview(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
   const handleUpload = async () => {
     if (!photoFile || !selectedProject || !onUploadPhoto) return;
-
     setUploading(true);
     try {
-      // Upload photo to Firebase Storage and Firestore
       await onUploadPhoto(photoFile, {
         authorId: member.id,
         authorName: member.name,
@@ -907,7 +485,6 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
         date: new Date().toISOString().split('T')[0].replace(/-/g, '.'),
         tags: ['완성작']
       });
-
       alert('사진이 갤러리에 업로드되었습니다! 🎉');
       onClose();
     } catch (error) {
@@ -918,7 +495,6 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
     }
   };
 
-  // 모바일 감지
   const isMobile = window.innerWidth < 768;
 
   return (
@@ -940,27 +516,18 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
         } overflow-y-auto`}
       >
         <div className="p-6 md:p-8">
-          {/* 헤더 */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl md:text-2xl font-bold text-gray-800 font-gowun">
-              완성작 기록하기 🧶
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
+            <h3 className="text-xl md:text-2xl font-bold text-gray-800 font-gowun">완성작 기록하기 🧶</h3>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* 작품 선택 (완성된 작품이 여러 개일 때) */}
           {completedProjects.length > 1 && !selectedProject && (
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                어떤 작품을 기록하시겠어요?
-              </h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">어떤 작품을 기록하시겠어요?</h4>
               <div className="space-y-2">
                 {completedProjects.map((project, idx) => (
                   <motion.button
@@ -980,7 +547,6 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
             </div>
           )}
 
-          {/* 선택된 작품 표시 */}
           {selectedProject && (
             <>
               <div className="mb-6 p-4 bg-gradient-to-r from-indie-pink/10 to-soft-coral/10 rounded-2xl">
@@ -991,20 +557,13 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
                     <p className="font-semibold text-gray-800">{selectedProject.title}</p>
                   </div>
                   {completedProjects.length > 1 && (
-                    <button
-                      onClick={() => onSelectProject(null)}
-                      className="ml-auto text-xs text-indie-pink hover:underline"
-                    >
-                      변경
-                    </button>
+                    <button onClick={() => onSelectProject(null)} className="ml-auto text-xs text-indie-pink hover:underline">변경</button>
                   )}
                 </div>
               </div>
 
-              {/* 사진 업로드 */}
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">사진 업로드</h4>
-
                 {!photoPreview ? (
                   <label className="block w-full h-48 border-2 border-dashed border-gray-300 rounded-2xl hover:border-indie-pink transition-colors cursor-pointer">
                     <div className="h-full flex flex-col items-center justify-center text-gray-500">
@@ -1013,25 +572,13 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
                       </svg>
                       <p className="text-sm">사진을 선택하거나 드래그하세요</p>
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                   </label>
                 ) : (
                   <div className="relative">
-                    <img
-                      src={photoPreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-2xl"
-                    />
+                    <img src={photoPreview} alt="Preview" className="w-full h-64 object-cover rounded-2xl" />
                     <button
-                      onClick={() => {
-                        setPhotoFile(null);
-                        setPhotoPreview(null);
-                      }}
+                      onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
                       className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1042,43 +589,21 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
                 )}
               </div>
 
-              {/* 사용한 실 */}
               <div className="mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">사용한 실</h4>
-                <input
-                  type="text"
-                  value={yarn}
-                  onChange={(e) => setYarn(e.target.value)}
-                  placeholder="예: 람스울 울실, 로완 코튼..."
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none"
-                />
+                <input type="text" value={yarn} onChange={(e) => setYarn(e.target.value)} placeholder="예: 람스울 울실, 로완 코튼..." className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none" />
               </div>
 
-              {/* 도안 */}
               <div className="mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">도안</h4>
-                <input
-                  type="text"
-                  value={pattern}
-                  onChange={(e) => setPattern(e.target.value)}
-                  placeholder="예: 펫블랑카 레시피북, 자체제작..."
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none"
-                />
+                <input type="text" value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="예: 펫블랑카 레시피북, 자체제작..." className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none" />
               </div>
 
-              {/* 소감 */}
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">소감</h4>
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="이 작품에 대한 소감을 남겨보세요..."
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none resize-none"
-                  rows={3}
-                />
+                <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="이 작품에 대한 소감을 남겨보세요..." className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-indie-pink focus:outline-none resize-none" rows={3} />
               </div>
 
-              {/* 업로드 버튼 */}
               <motion.button
                 whileHover={{ scale: photoFile ? 1.02 : 1 }}
                 whileTap={{ scale: photoFile ? 0.98 : 1 }}
@@ -1098,9 +623,7 @@ const PhotoUploadModal = ({ member, completedProjects, selectedProject, onClose,
                     </svg>
                     업로드 중...
                   </span>
-                ) : (
-                  '기록 완료하기'
-                )}
+                ) : '기록 완료하기'}
               </motion.button>
             </>
           )}
