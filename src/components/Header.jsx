@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useMembers } from '../hooks/useMembers';
 import { isAdmin } from '../utils/adminUtils';
-import AchievementBanner from './AchievementBanner';
 
 const Header = () => {
   const [groupName, setGroupName] = useState('실몽실 뜨개모임');
@@ -50,13 +49,6 @@ const Header = () => {
               </h1>
             )}
             <p className="text-sm text-gray-600 mt-2">뜨친자들 안녕?</p>
-          </div>
-
-          {/* 중앙: Achievement Banner (모바일에서는 아래, PC에서는 우측) */}
-          <div className="w-full md:w-auto flex justify-center md:justify-end md:flex-1">
-            {members.length > 0 && (
-              <AchievementBanner members={members} />
-            )}
           </div>
 
           {/* 우측: Current User Info */}

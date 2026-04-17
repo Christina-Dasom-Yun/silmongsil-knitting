@@ -65,7 +65,7 @@ function App() {
             <main className="max-w-7xl mx-auto px-6 md:px-12 py-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3 font-gowun">
-                  2026 뜨개계획 🎨
+                  2026 뜨케쥴 🎨
                 </h2>
               </div>
               {membersLoading ? (
