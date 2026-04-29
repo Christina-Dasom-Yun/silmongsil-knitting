@@ -5,6 +5,7 @@ import MemberCard from './components/MemberCard';
 import MeetingAttendance from './components/MeetingAttendance';
 import AdminMeetingStats from './components/AdminMeetingStats';
 import PlaceList from './components/PlaceList';
+import HamtteuCalendar from './components/HamtteuCalendar';
 import ArchiveGallery from './components/ArchiveGallery';
 import UserSelectionModal from './components/UserSelectionModal';
 import TopTabBar from './components/TopTabBar';
@@ -12,6 +13,7 @@ import { useMembers } from './hooks/useMembers';
 import { useLocations } from './hooks/useLocations';
 import { usePhotos } from './hooks/usePhotos';
 import { useMemoryPhotos } from './hooks/useMemoryPhotos';
+import { useHamtteu } from './hooks/useHamtteu';
 import { useUser } from './contexts/UserContext';
 
 function App() {
@@ -20,6 +22,7 @@ function App() {
   const { locations, addLocation, deleteLocation, updateLocation } = useLocations();
   const { photos, uploading, uploadPhoto, deletePhoto, updatePhoto } = usePhotos();
   const { memoryPhotos, uploading: memoryUploading, uploadMemoryPhoto, deleteMemoryPhoto } = useMemoryPhotos();
+  const { hamtteus, addHamtteu, updateHamtteu, deleteHamtteu } = useHamtteu();
 
   // User context
   const { currentUserId, selectUser, isLoading: userLoading } = useUser();
@@ -29,7 +32,7 @@ function App() {
     const saved = localStorage.getItem('silmongsil_active_tab');
     const migrationMap = { records: 'plans', meeting: 'attendance' };
     const migrated = migrationMap[saved] || saved;
-    const validTabs = ['plans', 'attendance', 'location', 'gallery'];
+    const validTabs = ['plans', 'attendance', 'location', 'hamtteu', 'gallery'];
     return validTabs.includes(migrated) ? migrated : 'plans';
   });
 
@@ -149,6 +152,27 @@ function App() {
                 members={members}
               />
             </main>
+          </motion.div>
+        );
+
+      case 'hamtteu':
+        return (
+          <motion.div
+            key="hamtteu"
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+          >
+            <HamtteuCalendar
+              hamtteus={hamtteus}
+              onAdd={addHamtteu}
+              onUpdate={updateHamtteu}
+              onDelete={deleteHamtteu}
+              currentUserId={currentUserId}
+              members={members}
+            />
           </motion.div>
         );
 
