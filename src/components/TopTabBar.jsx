@@ -4,7 +4,7 @@ const TopTabBar = ({ activeTab, onTabChange }) => {
   const tabs = [
     {
       id: 'plans',
-      label: '2026 계획',
+      label: '뜨케줄',
       icon: (
         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -13,7 +13,7 @@ const TopTabBar = ({ activeTab, onTabChange }) => {
     },
     {
       id: 'attendance',
-      label: '출석체크',
+      label: '츨첵',
       icon: (
         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -22,7 +22,7 @@ const TopTabBar = ({ activeTab, onTabChange }) => {
     },
     {
       id: 'location',
-      label: '같이가쟈',
+      label: '같이가자',
       icon: (
         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -71,7 +71,7 @@ const TopTabBar = ({ activeTab, onTabChange }) => {
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <span className={`transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`}>
+              <span className={`hidden md:inline transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`}>
                 {tab.icon}
               </span>
               <span>{tab.label}</span>
