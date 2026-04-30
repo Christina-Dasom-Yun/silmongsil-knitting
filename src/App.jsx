@@ -176,6 +176,7 @@ function App() {
               members={members}
               wishlist={wishlist}
               onAddWish={addWish}
+              onUpdateWish={updateWish}
               onDeleteWish={deleteWish}
               onToggleLike={toggleLike}
             />

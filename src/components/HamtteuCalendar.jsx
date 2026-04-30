@@ -253,7 +253,7 @@ function DayListModal({ date, items, onClose, onPick }) {
 }
 
 // ── Main Calendar ──
-const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, members, wishlist, onAddWish, onDeleteWish, onToggleLike }) => {
+const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, members, wishlist, onAddWish, onUpdateWish, onDeleteWish, onToggleLike }) => {
   const list = hamtteus || [];
   console.log('[HamtteuCalendar] list:', list.length, list);
   const [cursor, setCursor] = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
@@ -542,6 +542,7 @@ const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, m
               members={members}
               currentUserId={currentUserId}
               onAddWish={onAddWish}
+              onUpdateWish={onUpdateWish}
               onDeleteWish={onDeleteWish}
               onToggleLike={onToggleLike}
               onAddHamtteu={onAdd}

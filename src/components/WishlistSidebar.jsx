@@ -53,10 +53,13 @@ function WishAddModal({ onSave, onClose }) {
 }
 
 // ── Detail Modal ──
-function WishDetailModal({ wish, members, currentUserId, onToggleLike, onDelete, onStartHamtteu, onClose }) {
+function WishDetailModal({ wish, members, currentUserId, onToggleLike, onDelete, onUpdate, onStartHamtteu, onClose }) {
   const [showStartForm, setShowStartForm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ patternName: wish.patternName, description: wish.description || '', recommendedYarn: wish.recommendedYarn || '' });
   const [startDate, setStartDate] = useState(U.fmtDate(TODAY));
   const [endDate, setEndDate] = useState(U.fmtDate(TODAY));
+  const editSet = (k) => (e) => setEditForm(f => ({ ...f, [k]: e.target.value }));
 
   const likes = wish.likes || [];
   const isLiked = likes.includes(currentUserId);
@@ -92,28 +95,66 @@ function WishDetailModal({ wish, members, currentUserId, onToggleLike, onDelete,
         <div className="bg-gradient-to-br from-indie-pink/20 to-soft-coral/10 p-6 rounded-t-3xl">
           <div className="flex items-start justify-between">
             <h3 className="text-xl font-bold text-gray-800 font-gowun flex-1">{wish.patternName}</h3>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/50 rounded-full ml-2">
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+            <div className="flex items-center gap-1 ml-2">
+              {wish.authorId === currentUserId && !editing && (
+                <button onClick={() => setEditing(true)} className="p-1.5 hover:bg-white/50 rounded-full" title="수정">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                </button>
+              )}
+              <button onClick={onClose} className="p-1.5 hover:bg-white/50 rounded-full">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
           </div>
           <p className="text-xs text-gray-500 mt-1">{author} 님이 등록</p>
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Description */}
-          {wish.description && (
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">설명</p>
-              <p className="text-sm text-gray-600 leading-relaxed">{wish.description}</p>
+          {/* Edit form */}
+          {editing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">도안이름 <span className="text-indie-pink">*</span></label>
+                <input value={editForm.patternName} onChange={editSet('patternName')} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indie-pink transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">함뜨설명 <span className="text-gray-400 font-normal">(선택)</span></label>
+                <textarea value={editForm.description} onChange={editSet('description')} rows="2" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indie-pink resize-none transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">추천실 <span className="text-gray-400 font-normal">(선택)</span></label>
+                <input value={editForm.recommendedYarn} onChange={editSet('recommendedYarn')} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indie-pink transition-colors" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setEditing(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm">취소</button>
+                <button
+                  onClick={() => {
+                    if (!editForm.patternName.trim()) { alert('도안이름을 입력해주세요'); return; }
+                    onUpdate(wish.id, editForm);
+                    setEditing(false);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-indie-pink to-soft-coral text-white py-2.5 rounded-xl font-semibold shadow-lg shadow-indie-pink/30 hover:shadow-xl transition-all text-sm"
+                >저장</button>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Description */}
+              {wish.description && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-1">설명</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">{wish.description}</p>
+                </div>
+              )}
 
-          {/* Recommended Yarn */}
-          {wish.recommendedYarn && (
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">추천실</p>
-              <p className="text-sm text-gray-600">{wish.recommendedYarn}</p>
-            </div>
+              {/* Recommended Yarn */}
+              {wish.recommendedYarn && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-1">추천실</p>
+                  <p className="text-sm text-gray-600">{wish.recommendedYarn}</p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Likes Section */}
@@ -200,11 +241,13 @@ function WishDetailModal({ wish, members, currentUserId, onToggleLike, onDelete,
 }
 
 // ── Main WishlistSidebar ──
-export default function WishlistSidebar({ wishlist, members, currentUserId, onAddWish, onDeleteWish, onToggleLike, onAddHamtteu }) {
+export default function WishlistSidebar({ wishlist, members, currentUserId, onAddWish, onUpdateWish, onDeleteWish, onToggleLike, onAddHamtteu }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [detailId, setDetailId] = useState(null);
+  const [showAll, setShowAll] = useState(false);
 
   const sorted = [...(wishlist || [])].sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+  const visible = showAll ? sorted : sorted.slice(0, 6);
   const detailWish = detailId ? sorted.find(w => w.id === detailId) : null;
 
   const handleAdd = async (form) => {
@@ -234,10 +277,9 @@ export default function WishlistSidebar({ wishlist, members, currentUserId, onAd
         </div>
       ) : (
         <div className="space-y-2">
-          {sorted.map(wish => {
+          {visible.map(wish => {
             const likes = wish.likes || [];
             const isLiked = likes.includes(currentUserId);
-            const author = members?.find(m => m.id === wish.authorId)?.name;
             const likerNames = likes.map(uid => members?.find(m => m.id === uid)?.name).filter(Boolean);
             return (
               <div key={wish.id} className="group relative">
@@ -259,11 +301,8 @@ export default function WishlistSidebar({ wishlist, members, currentUserId, onAd
                           <span className="font-semibold">{likes.length}</span>
                         </motion.button>
                       </div>
-                      {wish.recommendedYarn && (
-                        <p className="text-[11px] text-gray-500 truncate">{wish.recommendedYarn}</p>
-                      )}
-                      {author && (
-                        <p className="text-[11px] text-gray-400 mt-0.5">{author}</p>
+                      {wish.description && (
+                        <p className="text-[11px] text-gray-500 truncate">{wish.description}</p>
                       )}
                       {likerNames.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
@@ -278,6 +317,14 @@ export default function WishlistSidebar({ wishlist, members, currentUserId, onAd
               </div>
             );
           })}
+          {sorted.length > 6 && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="w-full py-2 text-xs text-gray-400 hover:text-indie-pink font-semibold transition-colors"
+            >
+              {showAll ? '접기' : `더보기 (${sorted.length - 6}개)`}
+            </button>
+          )}
         </div>
       )}
 
@@ -295,6 +342,7 @@ export default function WishlistSidebar({ wishlist, members, currentUserId, onAd
                 currentUserId={currentUserId}
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteWish}
+                onUpdate={onUpdateWish}
                 onStartHamtteu={handleStartHamtteu}
                 onClose={() => setDetailId(null)}
               />
