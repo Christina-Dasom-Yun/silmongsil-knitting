@@ -14,6 +14,7 @@ import { useLocations } from './hooks/useLocations';
 import { usePhotos } from './hooks/usePhotos';
 import { useMemoryPhotos } from './hooks/useMemoryPhotos';
 import { useHamtteu } from './hooks/useHamtteu';
+import { useWishlist } from './hooks/useWishlist';
 import { useUser } from './contexts/UserContext';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
   const { photos, uploading, uploadPhoto, deletePhoto, updatePhoto } = usePhotos();
   const { memoryPhotos, uploading: memoryUploading, uploadMemoryPhoto, deleteMemoryPhoto } = useMemoryPhotos();
   const { hamtteus, addHamtteu, updateHamtteu, deleteHamtteu } = useHamtteu();
+  const { wishlist, addWish, updateWish, deleteWish, toggleLike } = useWishlist();
 
   // User context
   const { currentUserId, selectUser, isLoading: userLoading } = useUser();
@@ -172,6 +174,10 @@ function App() {
               onDelete={deleteHamtteu}
               currentUserId={currentUserId}
               members={members}
+              wishlist={wishlist}
+              onAddWish={addWish}
+              onDeleteWish={deleteWish}
+              onToggleLike={toggleLike}
             />
           </motion.div>
         );

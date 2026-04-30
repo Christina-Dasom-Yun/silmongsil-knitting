@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import * as U from '../utils/calendarUtils';
+import WishlistSidebar from './WishlistSidebar';
 
 const TODAY = new Date();
 
@@ -251,7 +253,7 @@ function DayListModal({ date, items, onClose, onPick }) {
 }
 
 // ── Main Calendar ──
-const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, members }) => {
+const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, members, wishlist, onAddWish, onDeleteWish, onToggleLike }) => {
   const list = hamtteus || [];
   console.log('[HamtteuCalendar] list:', list.length, list);
   const [cursor, setCursor] = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
@@ -261,6 +263,7 @@ const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, m
   const [detailId, setDetailId] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [sidebarTab, setSidebarTab] = useState('monthly');
 
   const me = members?.find(m => m.id === currentUserId)?.name || '';
 
@@ -462,50 +465,87 @@ const HamtteuCalendar = ({ hamtteus, onAdd, onUpdate, onDelete, currentUserId, m
         </div>
 
         {/* Side timeline */}
-        <aside className="bg-white/80 backdrop-blur rounded-3xl p-5 border border-white card-shadow self-start hidden lg:block">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800 font-gowun">이 달의 함뜨</h3>
-            <span className="text-xs text-gray-400 font-semibold">{monthList.length}개</span>
+        <aside className="bg-white/80 backdrop-blur rounded-3xl p-5 border border-white card-shadow self-start hidden lg:block max-h-[calc(100vh-120px)] overflow-y-auto">
+          {/* Tab toggle */}
+          <div className="relative flex items-center bg-gray-100 rounded-full p-1 mb-4">
+            <motion.div
+              layoutId="sidebarToggle"
+              className="absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-indie-pink to-soft-coral shadow-sm"
+              style={{ width: 'calc(50% - 4px)', left: sidebarTab === 'monthly' ? 4 : 'calc(50% + 0px)' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            />
+            <button
+              onClick={() => setSidebarTab('monthly')}
+              className={`relative z-10 flex-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                sidebarTab === 'monthly' ? 'text-gray-800' : 'text-gray-500'
+              }`}
+            >
+              이 달의 함뜨
+            </button>
+            <button
+              onClick={() => setSidebarTab('wishlist')}
+              className={`relative z-10 flex-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                sidebarTab === 'wishlist' ? 'text-gray-800' : 'text-gray-500'
+              }`}
+            >
+              위시리스트
+            </button>
           </div>
-          {monthList.length === 0 ? (
-            <div className="py-12 text-center"><div className="text-3xl mb-3">🧶</div><p className="text-sm text-gray-400">표시할 함뜨가 없어요</p></div>
-          ) : (
-            <div className="space-y-2">
-              {monthList.map(h => {
-                const tok = getColorToken(h.color);
-                const status = U.getStatus(h, TODAY);
-                const start = U.parseDate(h.startDate), end = U.parseDate(h.endDate);
-                const total = U.daysBetween(start, end) + 1;
-                const elapsed = Math.max(0, Math.min(total, U.daysBetween(start, TODAY) + 1));
-                const pct = status === 'completed' ? 100 : status === 'upcoming' ? 0 : Math.round((elapsed / total) * 100);
-                return (
-                  <div key={h.id} className="group relative">
-                  <button onClick={() => setDetailId(h.id)} className="w-full text-left p-3 rounded-2xl border border-gray-100 hover:border-indie-pink/40 hover:bg-warm-cream/60 transition-all">
-                    <div className="flex items-start gap-3">
-                      <span className="w-1.5 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ background: tok.bar }}></span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-gray-800 truncate text-sm">{h.title}</p>
-                          <StatusPill status={status} />
+
+          {/* Tab content */}
+          {sidebarTab === 'monthly' ? (
+            <>
+              {monthList.length === 0 ? (
+                <div className="py-12 text-center"><div className="text-3xl mb-3">🧶</div><p className="text-sm text-gray-400">표시할 함뜨가 없어요</p></div>
+              ) : (
+                <div className="space-y-2">
+                  {monthList.map(h => {
+                    const tok = getColorToken(h.color);
+                    const status = U.getStatus(h, TODAY);
+                    const start = U.parseDate(h.startDate), end = U.parseDate(h.endDate);
+                    const total = U.daysBetween(start, end) + 1;
+                    const elapsed = Math.max(0, Math.min(total, U.daysBetween(start, TODAY) + 1));
+                    const pct = status === 'completed' ? 100 : status === 'upcoming' ? 0 : Math.round((elapsed / total) * 100);
+                    return (
+                      <div key={h.id} className="group relative">
+                      <button onClick={() => setDetailId(h.id)} className="w-full text-left p-3 rounded-2xl border border-gray-100 hover:border-indie-pink/40 hover:bg-warm-cream/60 transition-all">
+                        <div className="flex items-start gap-3">
+                          <span className="w-1.5 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ background: tok.bar }}></span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-bold text-gray-800 truncate text-sm">{h.title}</p>
+                              <StatusPill status={status} />
+                            </div>
+                            <p className="text-[11px] text-gray-500 mb-2">{h.startDate.slice(5).replace('-', '/')} → {h.endDate.slice(5).replace('-', '/')} · {h.participants?.length || 0}명</p>
+                            <div className="bg-gray-100 h-1 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: pct + '%', background: tok.bar }}></div>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-gray-500 mb-2">{h.startDate.slice(5).replace('-', '/')} → {h.endDate.slice(5).replace('-', '/')} · {h.participants?.length || 0}명</p>
-                        <div className="bg-gray-100 h-1 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: pct + '%', background: tok.bar }}></div>
-                        </div>
+                      </button>
+                      <button
+                        onClick={() => { if (confirm('이 함뜨를 삭제할까요?')) handleDelete(h.id); }}
+                        className="absolute top-2 right-2 p-1.5 rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                        title="삭제"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                       </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { if (confirm('이 함뜨를 삭제할까요?')) handleDelete(h.id); }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                    title="삭제"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <WishlistSidebar
+              wishlist={wishlist}
+              members={members}
+              currentUserId={currentUserId}
+              onAddWish={onAddWish}
+              onDeleteWish={onDeleteWish}
+              onToggleLike={onToggleLike}
+              onAddHamtteu={onAdd}
+            />
           )}
         </aside>
       </div>
