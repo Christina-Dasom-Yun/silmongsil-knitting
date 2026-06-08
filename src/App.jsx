@@ -7,10 +7,12 @@ import AdminMeetingStats from './components/AdminMeetingStats';
 import PlaceList from './components/PlaceList';
 import HamtteuCalendar from './components/HamtteuCalendar';
 import ArchiveGallery from './components/ArchiveGallery';
+import TipBoard from './components/TipBoard';
 import UserSelectionModal from './components/UserSelectionModal';
 import TopTabBar from './components/TopTabBar';
 import { useMembers } from './hooks/useMembers';
 import { useLocations } from './hooks/useLocations';
+import { useTips } from './hooks/useTips';
 import { usePhotos } from './hooks/usePhotos';
 import { useMemoryPhotos } from './hooks/useMemoryPhotos';
 import { useHamtteu } from './hooks/useHamtteu';
@@ -25,6 +27,7 @@ function App() {
   const { memoryPhotos, uploading: memoryUploading, uploadMemoryPhoto, deleteMemoryPhoto } = useMemoryPhotos();
   const { hamtteus, addHamtteu, updateHamtteu, deleteHamtteu } = useHamtteu();
   const { wishlist, addWish, updateWish, deleteWish, toggleLike } = useWishlist();
+  const { tips, addTip, updateTip, deleteTip } = useTips();
 
   // User context
   const { currentUserId, selectUser, isLoading: userLoading } = useUser();
@@ -34,7 +37,7 @@ function App() {
     const saved = localStorage.getItem('silmongsil_active_tab');
     const migrationMap = { records: 'plans', meeting: 'attendance' };
     const migrated = migrationMap[saved] || saved;
-    const validTabs = ['plans', 'attendance', 'location', 'hamtteu', 'gallery'];
+    const validTabs = ['plans', 'attendance', 'location', 'hamtteu', 'gallery', 'tips'];
     return validTabs.includes(migrated) ? migrated : 'plans';
   });
 
@@ -203,6 +206,27 @@ function App() {
               memoryUploading={memoryUploading}
               onUploadMemoryPhoto={uploadMemoryPhoto}
               onDeleteMemoryPhoto={deleteMemoryPhoto}
+              currentUserId={currentUserId}
+              members={members}
+            />
+          </motion.div>
+        );
+
+      case 'tips':
+        return (
+          <motion.div
+            key="tips"
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+          >
+            <TipBoard
+              tips={tips}
+              onAddTip={addTip}
+              onUpdateTip={updateTip}
+              onDeleteTip={deleteTip}
               currentUserId={currentUserId}
               members={members}
             />

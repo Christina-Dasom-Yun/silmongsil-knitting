@@ -3,6 +3,15 @@ import { motion } from 'framer-motion';
 const TopTabBar = ({ activeTab, onTabChange }) => {
   const tabs = [
     {
+      id: 'tips',
+      label: '인포메이션',
+      icon: (
+        <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      )
+    },
+    {
       id: 'plans',
       label: '뜨케줄',
       icon: (
@@ -65,7 +74,7 @@ const TopTabBar = ({ activeTab, onTabChange }) => {
               key={tab.id}
               onClick={() => handleTabClick(tab.id)}
               whileTap={{ scale: 0.95 }}
-              className={`relative flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-3.5 md:py-4 text-sm md:text-base font-semibold transition-colors ${
+              className={`relative flex items-center gap-2 md:gap-2.5 px-3 md:px-5 py-3.5 md:py-4 text-xs md:text-base font-semibold transition-colors ${
                 activeTab === tab.id
                   ? 'text-indie-pink'
                   : 'text-gray-400 hover:text-gray-600'
